@@ -56,7 +56,6 @@ export function ImageUpload({ onImageSelect, onError }: ImageUploadProps) {
   }, [onImageSelect, onError, validateFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    console.log('handleDrop event =>', e);
     e.preventDefault();
     setIsDragOver(false);
     handleFiles(e.dataTransfer.files);
@@ -73,7 +72,6 @@ export function ImageUpload({ onImageSelect, onError }: ImageUploadProps) {
   }, []);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('handleFileInputChange event =>', e);
     handleFiles(e.target.files);
     // Reset input value to allow selecting the same file again
     e.target.value = '';
