@@ -8,12 +8,21 @@ type DocumentState = {
 };
 
 type EditorHistory = {
-  past: DocumentState[];   // Array of previous states
-  present: DocumentState;  // Current state
-  future: DocumentState[]; // States you can redo to
+  past: DocumentState[];
+  present: DocumentState;
+  future: DocumentState[];
+  limit: number;
+};
+
+type HistoryStats = {
+  pastCount: number;
+  futureCount: number;
+  canUndo: boolean;
+  canRedo: boolean;
 };
 
 export type {
   DocumentState,
   EditorHistory,
+  HistoryStats,
 };
