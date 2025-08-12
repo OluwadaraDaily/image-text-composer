@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image as KonvaImage, Text, Rect, Transformer } from 'react-konva';
 import type { CanvasMeta, TextLayer } from '@/types';
 
@@ -74,6 +74,37 @@ export default function KonvaCanvasWrapper({
     }
   };
 
+  // Helper function to cycle through text layers
+  const cycleThroughLayers = useCallback((direction: 'forward' | 'backward') => {
+    if (textLayers.length === 0) return;
+
+    // Sort layers by zIndex to ensure consistent tab order
+    const sortedLayers = [...textLayers].sort((a, b) => a.zIndex - b.zIndex);
+    
+    if (!selectedLayerId) {
+      // If nothing selected, select first layer
+      onSelectedLayerChange?.(sortedLayers[0].id);
+      return;
+    }
+
+    const currentIndex = sortedLayers.findIndex(layer => layer.id === selectedLayerId);
+    
+    if (currentIndex === -1) {
+      // If selected layer not found, select first layer
+      onSelectedLayerChange?.(sortedLayers[0].id);
+      return;
+    }
+
+    let nextIndex;
+    if (direction === 'forward') {
+      nextIndex = (currentIndex + 1) % sortedLayers.length;
+    } else {
+      nextIndex = (currentIndex - 1 + sortedLayers.length) % sortedLayers.length;
+    }
+
+    onSelectedLayerChange?.(sortedLayers[nextIndex].id);
+  }, [textLayers, selectedLayerId, onSelectedLayerChange]);
+
 
   useEffect(() => {
     if (isEditing && textInputRef.current) {
@@ -84,7 +115,15 @@ export default function KonvaCanvasWrapper({
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      console.log("EVENT =>", e)
+      console.log("EVENT =>", e);
+      
+      // Check if we're in a text input/textarea to avoid interfering with typing
+      const activeElement = document.activeElement;
+      const isInTextInput = activeElement?.tagName === 'INPUT' || 
+                           activeElement?.tagName === 'TEXTAREA' || 
+                           (activeElement as HTMLElement)?.isContentEditable === true;
+      
+      // Handle Escape key
       if (e.key === 'Escape') {
         if (isEditing) {
           cancelEditing();
@@ -92,8 +131,23 @@ export default function KonvaCanvasWrapper({
           onSelectedLayerChange?.(null);
         }
       }
+      
+      // Handle Backspace key (only when not editing)
       if (e.key === 'Backspace' && !isEditing) {
         onSelectedLayerChange?.(null);
+      }
+      
+      // Handle Tab navigation (only when not in text inputs and not editing)
+      if (e.key === 'Tab' && !isInTextInput && !isEditing) {
+        e.preventDefault(); // Prevent default tab behavior
+        
+        if (e.shiftKey) {
+          // Shift+Tab: cycle backward
+          cycleThroughLayers('backward');
+        } else {
+          // Tab: cycle forward
+          cycleThroughLayers('forward');
+        }
       }
     };
 
@@ -102,7 +156,7 @@ export default function KonvaCanvasWrapper({
     return () => {
       document.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [isEditing, selectedLayerId, onSelectedLayerChange]);
+  }, [isEditing, selectedLayerId, cycleThroughLayers]);
 
   const handleStageClick = (e: any) => {
     if (e.target === e.target.getStage()) {
