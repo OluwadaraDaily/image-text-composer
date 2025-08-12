@@ -25,6 +25,7 @@ export default function KonvaCanvasWrapper({
   const [isEditing, setIsEditing] = useState(false);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleTextClick = (layerId: string) => {
     onSelectedLayerChange?.(layerId);
@@ -125,16 +126,15 @@ export default function KonvaCanvasWrapper({
           return (
             <React.Fragment key={layer.id}>
               {/* Selection box background for selected text */}
-              {isSelected && !isEditingThis && (
+              {isSelected && !isEditingThis && !isDragging && (
                 <Rect
                   x={layer.x - 4}
-                  y={layer.y - 4}
+                  y={layer.y - 6}
                   width={layer.width + 8}
                   height={layer.height + 8}
                   fill="transparent"
-                  stroke="#007bff"
-                  strokeWidth={2}
-                  dash={[5, 5]}
+                  stroke="#000000"
+                  strokeWidth={1}
                   opacity={0.7}
                   listening={false}
                 />
@@ -156,7 +156,9 @@ export default function KonvaCanvasWrapper({
                 draggable={!isEditingThis}
                 onClick={() => handleTextClick(layer.id)}
                 onDblClick={() => handleTextDoubleClick(layer.id)}
+                onDragStart={() => setIsDragging(true)}
                 onDragEnd={(e) => {
+                  setIsDragging(false);
                   if (onTextLayersChange) {
                     const updatedLayers = textLayers.map(l => 
                       l.id === layer.id 
