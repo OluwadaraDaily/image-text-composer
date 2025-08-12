@@ -85,6 +85,7 @@ export default function TextLayers({
                 text={layer.text}
                 fontSize={layer.fontSize}
                 fontFamily={layer.fontFamily}
+                fontStyle={`${layer.fontWeight}`}
                 fill={`rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`}
                 align={layer.alignment}
                 width={layer.width}

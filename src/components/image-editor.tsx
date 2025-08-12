@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ImageCanvas } from '@/components/canvas/image-canvas';
+import { TextToolbar } from '@/components/text-toolbar';
 import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -19,6 +20,12 @@ export function ImageEditor({
 }: ImageEditorProps) {
   const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+
+  const handleLayerUpdate = useCallback((layerId: string, updates: Partial<TextLayer>) => {
+    setTextLayers(prev => prev.map(layer => 
+      layer.id === layerId ? { ...layer, ...updates } : layer
+    ));
+  }, []);
 
   const handleAddText = useCallback(() => {
     if (!canvasMeta) return;
@@ -73,46 +80,57 @@ export function ImageEditor({
     };
   }, [handleAddText]);
 
+  const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center gap-4 max-w-[600px] mx-auto">
-        <button 
-          onClick={onReset}
-          className="px-3 py-1 text-sm text-black hover:text-white hover:bg-gray-900 rounded-md transition-colors hover:cursor-pointer"
-        >
-          Upload a different image
-        </button>
+    <div className="flex h-screen">
+      {/* Text Toolbar */}
+      <TextToolbar 
+        selectedLayer={selectedLayer}
+        onLayerUpdate={handleLayerUpdate}
+      />
+      
+      {/* Main Editor Area */}
+      <div className="flex-1 space-y-6 p-6">
+        <div className="flex justify-between items-center gap-4 max-w-[600px] mx-auto">
+          <button 
+            onClick={onReset}
+            className="px-3 py-1 text-sm text-black hover:text-white hover:bg-gray-900 rounded-md transition-colors hover:cursor-pointer"
+          >
+            Upload a different image
+          </button>
+
+          {canvasMeta && (
+            <Button onClick={handleAddText} size="sm" className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Add Text
+            </Button>
+          )}
+        </div>
+        
+        <div className="flex justify-center">
+          <ImageCanvas 
+            image={image}
+            onCanvasMetaUpdate={onCanvasMetaUpdate}
+            maxCanvasWidth={800}
+            maxCanvasHeight={600}
+            textLayers={textLayers}
+            selectedLayerId={selectedLayerId}
+            onTextLayersChange={setTextLayers}
+            onSelectedLayerChange={setSelectedLayerId}
+          />
+        </div>
 
         {canvasMeta && (
-          <Button onClick={handleAddText} size="sm" className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Text
-          </Button>
+          <div className="text-center text-sm text-gray-500">
+            <div className="bg-white p-3 rounded-lg border inline-block">
+              <strong>Canvas Info:</strong> Display scale {Math.round(canvasMeta.scale * 100)}% 
+              • {textLayers.length} text layer{textLayers.length !== 1 ? 's' : ''}
+              {selectedLayerId && ` • Selected: ${textLayers.find(l => l.id === selectedLayerId)?.text || 'Unknown'}`}
+            </div>
+          </div>
         )}
       </div>
-      
-      <div className="flex justify-center">
-        <ImageCanvas 
-          image={image}
-          onCanvasMetaUpdate={onCanvasMetaUpdate}
-          maxCanvasWidth={800}
-          maxCanvasHeight={600}
-          textLayers={textLayers}
-          selectedLayerId={selectedLayerId}
-          onTextLayersChange={setTextLayers}
-          onSelectedLayerChange={setSelectedLayerId}
-        />
-      </div>
-
-      {canvasMeta && (
-        <div className="text-center text-sm text-gray-500">
-          <div className="bg-white p-3 rounded-lg border inline-block">
-            <strong>Canvas Info:</strong> Display scale {Math.round(canvasMeta.scale * 100)}% 
-            • {textLayers.length} text layer{textLayers.length !== 1 ? 's' : ''}
-            {selectedLayerId && ` • Selected: ${textLayers.find(l => l.id === selectedLayerId)?.text || 'Unknown'}`}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
