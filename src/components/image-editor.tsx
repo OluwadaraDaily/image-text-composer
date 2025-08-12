@@ -1,5 +1,8 @@
+import { useState, useCallback } from 'react';
 import { ImageCanvas } from '@/components/canvas/image-canvas';
-import type { ImageAsset, CanvasMeta } from '@/types';
+import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 interface ImageEditorProps {
   image: ImageAsset;
@@ -14,15 +17,51 @@ export function ImageEditor({
   onCanvasMetaUpdate, 
   onReset 
 }: ImageEditorProps) {
+  const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+
+  const handleAddText = useCallback(() => {
+    if (!canvasMeta) return;
+
+    const newLayer: TextLayer = {
+      id: `text-${Date.now()}`,
+      text: 'New Text',
+      x: canvasMeta.width / 2 - 50, // Center horizontally (rough estimate)
+      y: canvasMeta.height / 2 - 12, // Center vertically (rough estimate)
+      rotation: 0,
+      width: 100,
+      height: 24,
+      fontFamily: 'Arial',
+      fontWeight: 400,
+      fontSize: 18,
+      color: { r: 0, g: 0, b: 0, a: 1 }, // Black
+      opacity: 1,
+      alignment: 'center',
+      locked: false,
+      zIndex: textLayers.length,
+      selected: true,
+    };
+
+    setTextLayers(prev => [...prev, newLayer]);
+    setSelectedLayerId(newLayer.id);
+  }, [canvasMeta, textLayers.length]);
+
   return (
     <div className="space-y-6">
-      <div className="text-center">
+      <div className="flex justify-between items-center gap-4 max-w-[600px] mx-auto">
         <button 
           onClick={onReset}
-          className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors hover:cursor-pointer"
+          className="px-3 py-1 text-sm text-black hover:text-white hover:bg-gray-900 rounded-md transition-colors hover:cursor-pointer"
         >
           Upload a different image
         </button>
+
+        {canvasMeta && (
+          <Button onClick={handleAddText} size="sm" className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Text
+          </Button>
+        )}
       </div>
       
       <div className="flex justify-center">
@@ -31,6 +70,10 @@ export function ImageEditor({
           onCanvasMetaUpdate={onCanvasMetaUpdate}
           maxCanvasWidth={800}
           maxCanvasHeight={600}
+          textLayers={textLayers}
+          selectedLayerId={selectedLayerId}
+          onTextLayersChange={setTextLayers}
+          onSelectedLayerChange={setSelectedLayerId}
         />
       </div>
 
@@ -38,7 +81,8 @@ export function ImageEditor({
         <div className="text-center text-sm text-gray-500">
           <div className="bg-white p-3 rounded-lg border inline-block">
             <strong>Canvas Info:</strong> Display scale {Math.round(canvasMeta.scale * 100)}% 
-            • Ready for text layers
+            • {textLayers.length} text layer{textLayers.length !== 1 ? 's' : ''}
+            {selectedLayerId && ` • Selected: ${textLayers.find(l => l.id === selectedLayerId)?.text || 'Unknown'}`}
           </div>
         </div>
       )}

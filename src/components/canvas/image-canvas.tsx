@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { ImageAsset, CanvasMeta } from '@/types';
+import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
 import { calculateDisplaySize } from '@/lib/image-utils';
 import { toast } from 'sonner';
 
@@ -14,13 +14,21 @@ interface ImageCanvasProps {
   onCanvasMetaUpdate?: (meta: CanvasMeta) => void;
   maxCanvasWidth?: number;
   maxCanvasHeight?: number;
+  textLayers?: TextLayer[];
+  selectedLayerId?: string | null;
+  onTextLayersChange?: (layers: TextLayer[]) => void;
+  onSelectedLayerChange?: (layerId: string | null) => void;
 }
 
 export function ImageCanvas({ 
   image, 
   onCanvasMetaUpdate,
   maxCanvasWidth = 800,
-  maxCanvasHeight = 600 
+  maxCanvasHeight = 600,
+  textLayers = [],
+  selectedLayerId,
+  onTextLayersChange,
+  onSelectedLayerChange
 }: ImageCanvasProps) {
   const [imageObject, setImageObject] = useState<HTMLImageElement | null>(null);
   const [canvasMeta, setCanvasMeta] = useState<CanvasMeta>({
@@ -104,6 +112,10 @@ export function ImageCanvas({
         <KonvaCanvas
           imageObject={imageObject}
           canvasMeta={canvasMeta}
+          textLayers={textLayers}
+          selectedLayerId={selectedLayerId}
+          onTextLayersChange={onTextLayersChange}
+          onSelectedLayerChange={onSelectedLayerChange}
         />
       </div>
     );
