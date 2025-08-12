@@ -1,7 +1,7 @@
 'use client';
 
-import { ImageUpload } from '@/components/image-upload';
-import { ImageCanvas } from '@/components/canvas/image-canvas';
+import { EmptyState } from '@/components/empty-state';
+import { ImageEditor } from '@/components/image-editor';
 import { useState, useCallback, useEffect } from 'react';
 import { processImageFile, cleanupImageUrl } from '@/lib/image-utils';
 import type { ImageAsset, CanvasMeta } from '@/types';
@@ -67,49 +67,18 @@ export default function Home() {
         </div>
 
         {!processedImage ? (
-          <div className="max-w-2xl mx-auto">
-            <ImageUpload 
-              onImageSelect={handleImageSelect}
-              onError={handleError}
-            />
-            {isProcessing && (
-              <div className="text-center mt-4 text-gray-600">
-                <div className="animate-pulse">Processing image...</div>
-              </div>
-            )}
-          </div>
+          <EmptyState 
+            onImageSelect={handleImageSelect}
+            onError={handleError}
+            isProcessing={isProcessing}
+          />
         ) : (
-          <div className="space-y-6">
-            <div className="text-center">
-              <p className="text-green-600 mb-2 font-medium">
-                ✅ Image loaded: {selectedFile?.name}
-              </p>
-              <button 
-                onClick={handleReset}
-                className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
-              >
-                Upload a different image
-              </button>
-            </div>
-            
-            <div className="flex justify-center">
-              <ImageCanvas 
-                image={processedImage}
-                onCanvasMetaUpdate={handleCanvasMetaUpdate}
-                maxCanvasWidth={800}
-                maxCanvasHeight={600}
-              />
-            </div>
-
-            {canvasMeta && (
-              <div className="text-center text-sm text-gray-500">
-                <div className="bg-white p-3 rounded-lg border inline-block">
-                  <strong>Canvas Info:</strong> Display scale {Math.round(canvasMeta.scale * 100)}% 
-                  • Ready for text layers
-                </div>
-              </div>
-            )}
-          </div>
+          <ImageEditor 
+            image={processedImage}
+            canvasMeta={canvasMeta}
+            onCanvasMetaUpdate={handleCanvasMetaUpdate}
+            onReset={handleReset}
+          />
         )}
       </div>
     </div>

@@ -31,18 +31,18 @@ export async function processImageFile(file: File): Promise<ProcessedImage> {
 }
 
 export function calculateDisplaySize(
-  originalWidth: number,
-  originalHeight: number,
-  maxWidth: number,
-  maxHeight: number
+  imageWidth: number,
+  imageHeight: number,
+  maxCanvasWidth: number,
+  maxCanvasHeight: number
 ): { width: number; height: number; scale: number } {
-  const scaleX = maxWidth / originalWidth;
-  const scaleY = maxHeight / originalHeight;
+  const scaleX = maxCanvasWidth / imageWidth;
+  const scaleY = maxCanvasHeight / imageHeight;
   const scale = Math.min(scaleX, scaleY, 1);
   
   return {
-    width: originalWidth * scale,
-    height: originalHeight * scale,
+    width: imageWidth * scale,
+    height: imageHeight * scale,
     scale
   };
 }
