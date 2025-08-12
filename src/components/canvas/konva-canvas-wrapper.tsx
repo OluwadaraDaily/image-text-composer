@@ -119,7 +119,6 @@ export default function KonvaCanvasWrapper({
       {/* Text layers */}
       <Layer>
         {textLayers.map((layer) => {
-          console.log('layer =>', layer);
           const isSelected = layer.id === selectedLayerId;
           const isEditingThis = isEditing && editingLayerId === layer.id;
           
@@ -136,6 +135,7 @@ export default function KonvaCanvasWrapper({
                   stroke="#000000"
                   strokeWidth={1}
                   opacity={0.7}
+                  cornerRadius={4}
                   listening={false}
                 />
               )}
