@@ -71,11 +71,9 @@ export default function KonvaCanvasWrapper({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       finishEditing();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEditing();
     }
   };
+
 
   useEffect(() => {
     if (isEditing && textInputRef.current) {
@@ -84,8 +82,25 @@ export default function KonvaCanvasWrapper({
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isEditing) {
+          cancelEditing();
+        } else if (selectedLayerId) {
+          onSelectedLayerChange?.(null);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [isEditing, selectedLayerId, onSelectedLayerChange]);
+
   const handleStageClick = (e: any) => {
-    // If clicked on empty area, deselect
     if (e.target === e.target.getStage()) {
       onSelectedLayerChange?.(null);
       setIsEditing(false);
