@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ImageCanvas } from '@/components/canvas/image-canvas';
 import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,33 @@ export function ImageEditor({
     setTextLayers(prev => [...prev, newLayer]);
     setSelectedLayerId(newLayer.id);
   }, [canvasMeta, textLayers.length]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      
+      // Check if we're in a text input/textarea to avoid interfering with typing
+      const activeElement = document.activeElement;
+      const isInTextInput = activeElement?.tagName === 'INPUT' || 
+                           activeElement?.tagName === 'TEXTAREA' || 
+                           (activeElement as HTMLElement)?.isContentEditable === true;
+      
+      if (isInTextInput) return;
+      
+      if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        handleAddText();
+      } else if ((event.key === 't' || event.key === 'T') && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        handleAddText();
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [handleAddText]);
 
   return (
     <div className="space-y-6">

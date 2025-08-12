@@ -84,12 +84,16 @@ export default function KonvaCanvasWrapper({
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      console.log("EVENT =>", e)
       if (e.key === 'Escape') {
         if (isEditing) {
           cancelEditing();
         } else if (selectedLayerId) {
           onSelectedLayerChange?.(null);
         }
+      }
+      if (e.key === 'Backspace' && !isEditing) {
+        onSelectedLayerChange?.(null);
       }
     };
 
