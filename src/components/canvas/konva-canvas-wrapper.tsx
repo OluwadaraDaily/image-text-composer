@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage, Text, Rect, Transformer, Group, Circle, Line } from 'react-konva';
-import Konva from 'konva';
+import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import type { CanvasMeta, TextLayer } from '@/types';
+import TextLayers from './text-layers';
+
 
 interface KonvaCanvasWrapperProps {
   imageObject: HTMLImageElement;
@@ -53,54 +54,6 @@ export default function KonvaCanvasWrapper({
     };
   };
 
-  const handleTextClick = (layerId: string) => {
-    onSelectedLayerChange?.(layerId);
-    setIsEditing(false);
-    setEditingLayerId(null);
-  };
-
-  const handleTextDoubleClick = (layerId: string) => {
-    const layer = textLayers.find(l => l.id === layerId);
-    if (layer) {
-      setIsEditing(true);
-      setEditingLayerId(layerId);
-      setEditingText(layer.text);
-      onSelectedLayerChange?.(layerId);
-    }
-  };
-
-  const finishEditing = () => {
-    if (editingLayerId && onTextLayersChange) {
-      const updatedLayers = textLayers.map(layer => 
-        layer.id === editingLayerId 
-          ? { ...layer, text: editingText }
-          : layer
-      );
-      onTextLayersChange(updatedLayers);
-    }
-    setIsEditing(false);
-    setEditingLayerId(null);
-    setEditingText('');
-    // Deselect the text after editing to hide the selection box
-    onSelectedLayerChange?.(null);
-  };
-
-  const cancelEditing = () => {
-    setIsEditing(false);
-    setEditingLayerId(null);
-    setEditingText('');
-    // Deselect the text when canceling editing to hide the selection box
-    onSelectedLayerChange?.(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      finishEditing();
-    }
-  };
-
-  // Helper function to cycle through text layers
   const cycleThroughLayers = useCallback((direction: 'forward' | 'backward') => {
     if (textLayers.length === 0) return;
 
@@ -131,6 +84,233 @@ export default function KonvaCanvasWrapper({
     onSelectedLayerChange?.(sortedLayers[nextIndex].id);
   }, [textLayers, selectedLayerId, onSelectedLayerChange]);
 
+  // Stage event handlers
+  const handleStageClick = (e: any) => {
+    if (e.target === e.target.getStage()) {
+      onSelectedLayerChange?.(null);
+      setIsEditing(false);
+      setEditingLayerId(null);
+    }
+  };
+
+  // Text event handlers
+  const handleTextClick = (layerId: string) => {
+    onSelectedLayerChange?.(layerId);
+    setIsEditing(false);
+    setEditingLayerId(null);
+  };
+
+  const handleTextDoubleClick = (layerId: string) => {
+    const layer = textLayers.find(l => l.id === layerId);
+    if (layer) {
+      setIsEditing(true);
+      setEditingLayerId(layerId);
+      setEditingText(layer.text);
+      onSelectedLayerChange?.(layerId);
+    }
+  };
+
+  const handleTextMouseEnter = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'move';
+  };
+
+  const handleTextMouseLeave = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'default';
+  };
+
+  // Drag event handlers
+  const handleDragStart = (layerId: string, e: any) => {
+    setIsDragging(true);
+    setDragStartPos({ x: e.target.x(), y: e.target.y() });
+    onSelectedLayerChange?.(layerId);
+  };
+
+  const handleDragMove = (layerId: string, e: any) => {
+    if (dragAnimationRef.current) {
+      cancelAnimationFrame(dragAnimationRef.current);
+    }
+
+    dragAnimationRef.current = requestAnimationFrame(() => {
+      const layer = textLayers.find(l => l.id === layerId);
+      if (!layer || !onTextLayersChange) return;
+
+      let newX = e.target.x();
+      let newY = e.target.y();
+
+      // Apply canvas bounds clamping
+      const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
+      newX = clamped.x;
+      newY = clamped.y;
+
+      // Update position immediately for smooth feedback
+      e.target.x(newX);
+      e.target.y(newY);
+    });
+  };
+
+  const handleDragEnd = (layerId: string, e: any) => {
+    setIsDragging(false);
+    
+    if (dragAnimationRef.current) {
+      cancelAnimationFrame(dragAnimationRef.current);
+    }
+
+    if (!onTextLayersChange) return;
+
+    const layer = textLayers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    let newX = e.target.x();
+    let newY = e.target.y();
+
+    // Apply final clamping and update state
+    const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
+    
+    const updatedLayers = textLayers.map(l => 
+      l.id === layerId 
+        ? { ...l, x: clamped.x, y: clamped.y }
+        : l
+    );
+    onTextLayersChange(updatedLayers);
+  };
+
+  // Resize handle event handlers
+  const handleResizeMouseEnter = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'nw-resize';
+  };
+
+  const handleResizeMouseLeave = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'default';
+  };
+
+  const handleResizeDragStart = () => setIsResizing(true);
+
+  const handleResizeDragMove = (layer: TextLayer, e: any) => {
+    const newWidth = Math.max(20, e.target.x() - layer.x);
+    const newHeight = Math.max(15, e.target.y() - layer.y);
+    
+    if (onTextLayersChange) {
+      let updatedWidth = newWidth;
+      let updatedHeight = newHeight;
+      let updatedFontSize = layer.fontSize;
+      let updatedX = layer.x;
+      let updatedY = layer.y;
+      
+      // Proportional resize with Shift key
+      if (modifierKeys.shift) {
+        const aspectRatio = layer.width / layer.height;
+        updatedHeight = newWidth / aspectRatio;
+      }
+      
+      // Center-scale with Alt key
+      if (modifierKeys.alt) {
+        const widthDelta = updatedWidth - layer.width;
+        const heightDelta = updatedHeight - layer.height;
+        updatedX = layer.x - widthDelta / 2;
+        updatedY = layer.y - heightDelta / 2;
+        
+        // Apply canvas bounds clamping for center-scale
+        const clamped = clampToCanvas(updatedX, updatedY, updatedWidth, updatedHeight);
+        updatedX = clamped.x;
+        updatedY = clamped.y;
+      }
+      
+      // Scale font size with resize (our decision from task 2)
+      const scaleX = updatedWidth / layer.width;
+      const scaleY = updatedHeight / layer.height;
+      const avgScale = (scaleX + scaleY) / 2;
+      updatedFontSize = Math.max(8, layer.fontSize * avgScale);
+      
+      const updatedLayers = textLayers.map(l => 
+        l.id === layer.id 
+          ? { 
+              ...l, 
+              x: updatedX,
+              y: updatedY,
+              width: updatedWidth, 
+              height: updatedHeight, 
+              fontSize: updatedFontSize 
+            }
+          : l
+      );
+      onTextLayersChange(updatedLayers);
+    }
+  };
+
+  const handleResizeDragEnd = () => setIsResizing(false);
+
+  // Rotation handle event handlers
+  const handleRotationMouseEnter = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'crosshair';
+  };
+
+  const handleRotationMouseLeave = (e: any) => {
+    const container = e.target.getStage()?.container();
+    if (container) container.style.cursor = 'default';
+  };
+
+  const handleRotationDragStart = () => setIsRotating(true);
+
+  const handleRotationDragMove = (layer: TextLayer, e: any) => {
+    const centerX = layer.x + layer.width / 2;
+    const centerY = layer.y + layer.height / 2;
+    
+    const angle = Math.atan2(
+      e.target.y() - centerY,
+      e.target.x() - centerX
+    ) * 180 / Math.PI;
+    
+    // Apply angle snapping
+    const snappedAngle = snapAngle(angle + 90); // +90 to align with visual expectation
+    
+    if (onTextLayersChange) {
+      const updatedLayers = textLayers.map(l => 
+        l.id === layer.id 
+          ? { ...l, rotation: snappedAngle }
+          : l
+      );
+      onTextLayersChange(updatedLayers);
+    }
+  };
+
+  const handleRotationDragEnd = () => setIsRotating(false);
+
+  // Text editing handlers
+  const finishEditing = () => {
+    if (editingLayerId && onTextLayersChange) {
+      const updatedLayers = textLayers.map(layer => 
+        layer.id === editingLayerId 
+          ? { ...layer, text: editingText }
+          : layer
+      );
+      onTextLayersChange(updatedLayers);
+    }
+    setIsEditing(false);
+    setEditingLayerId(null);
+    setEditingText('');
+    // Deselect the text after editing to hide the selection box
+    onSelectedLayerChange?.(null);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditingLayerId(null);
+    setEditingText('');
+    // Deselect the text when canceling editing to hide the selection box
+    onSelectedLayerChange?.(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      finishEditing();
+    }
+  };
 
   useEffect(() => {
     if (isEditing && textInputRef.current) {
@@ -236,69 +416,6 @@ export default function KonvaCanvasWrapper({
     };
   }, [isEditing, selectedLayerId, cycleThroughLayers, textLayers, onTextLayersChange, onSelectedLayerChange]);
 
-  // Enhanced drag handling with rAF
-  const handleDragStart = (layerId: string, e: any) => {
-    setIsDragging(true);
-    setDragStartPos({ x: e.target.x(), y: e.target.y() });
-    onSelectedLayerChange?.(layerId);
-  };
-
-  const handleDragMove = (layerId: string, e: any) => {
-    if (dragAnimationRef.current) {
-      cancelAnimationFrame(dragAnimationRef.current);
-    }
-
-    dragAnimationRef.current = requestAnimationFrame(() => {
-      const layer = textLayers.find(l => l.id === layerId);
-      if (!layer || !onTextLayersChange) return;
-
-      let newX = e.target.x();
-      let newY = e.target.y();
-
-      // Apply canvas bounds clamping
-      const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
-      newX = clamped.x;
-      newY = clamped.y;
-
-      // Update position immediately for smooth feedback
-      e.target.x(newX);
-      e.target.y(newY);
-    });
-  };
-
-  const handleDragEnd = (layerId: string, e: any) => {
-    setIsDragging(false);
-    
-    if (dragAnimationRef.current) {
-      cancelAnimationFrame(dragAnimationRef.current);
-    }
-
-    if (!onTextLayersChange) return;
-
-    const layer = textLayers.find(l => l.id === layerId);
-    if (!layer) return;
-
-    let newX = e.target.x();
-    let newY = e.target.y();
-
-    // Apply final clamping and update state
-    const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
-    
-    const updatedLayers = textLayers.map(l => 
-      l.id === layerId 
-        ? { ...l, x: clamped.x, y: clamped.y }
-        : l
-    );
-    onTextLayersChange(updatedLayers);
-  };
-
-  const handleStageClick = (e: any) => {
-    if (e.target === e.target.getStage()) {
-      onSelectedLayerChange?.(null);
-      setIsEditing(false);
-      setEditingLayerId(null);
-    }
-  };
 
   const editingLayer = editingLayerId ? textLayers.find(l => l.id === editingLayerId) : null;
 
@@ -325,207 +442,32 @@ export default function KonvaCanvasWrapper({
 
       {/* Text layers */}
       <Layer>
-        {textLayers.map((layer) => {
-          const isSelected = layer.id === selectedLayerId;
-          const isEditingThis = isEditing && editingLayerId === layer.id;
-          
-          return (
-            <React.Fragment key={layer.id}>
-              {/* Selection box background for selected text */}
-              {isSelected && !isEditingThis && !isDragging && (
-                <Rect
-                  x={layer.x - 4}
-                  y={layer.y - 6}
-                  width={layer.width + 8}
-                  height={layer.height + 8}
-                  fill="transparent"
-                  stroke="#000000"
-                  strokeWidth={1}
-                  opacity={0.7}
-                  cornerRadius={4}
-                  listening={false}
-                />
-              )}
-              
-              {/* Text element wrapped in Group for transform controls */}
-              <Group>
-                <Text
-                  x={layer.x}
-                  y={layer.y}
-                  text={layer.text}
-                  fontSize={layer.fontSize}
-                  fontFamily={layer.fontFamily}
-                  fill={`rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`}
-                  align={layer.alignment}
-                  width={layer.width}
-                  height={layer.height}
-                  rotation={layer.rotation}
-                  opacity={layer.opacity}
-                  draggable={!isEditingThis}
-                  onClick={() => handleTextClick(layer.id)}
-                  onDblClick={() => handleTextDoubleClick(layer.id)}
-                  onDragStart={(e) => handleDragStart(layer.id, e)}
-                  onDragMove={(e) => handleDragMove(layer.id, e)}
-                  onDragEnd={(e) => handleDragEnd(layer.id, e)}
-                  onMouseEnter={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'move';
-                  }}
-                  onMouseLeave={(e) => {
-                    const container = e.target.getStage()?.container();
-                    if (container) container.style.cursor = 'default';
-                  }}
-                  visible={!isEditingThis}
-                />
-                
-                {/* Transform handles for selected layer */}
-                {isSelected && !isEditingThis && !isDragging && (
-                  <>
-                    {/* Resize handles */}
-                    <Circle
-                      x={layer.x + layer.width}
-                      y={layer.y + layer.height}
-                      radius={6}
-                      fill="white"
-                      stroke="#007bff"
-                      strokeWidth={2}
-                      draggable
-                      onMouseEnter={(e) => {
-                        const container = e.target.getStage()?.container();
-                        if (container) container.style.cursor = 'nw-resize';
-                      }}
-                      onMouseLeave={(e) => {
-                        const container = e.target.getStage()?.container();
-                        if (container) container.style.cursor = 'default';
-                      }}
-                      onDragStart={() => setIsResizing(true)}
-                      onDragMove={(e) => {
-                        const newWidth = Math.max(20, e.target.x() - layer.x);
-                        const newHeight = Math.max(15, e.target.y() - layer.y);
-                        
-                        if (onTextLayersChange) {
-                          let updatedWidth = newWidth;
-                          let updatedHeight = newHeight;
-                          let updatedFontSize = layer.fontSize;
-                          let updatedX = layer.x;
-                          let updatedY = layer.y;
-                          
-                          // Proportional resize with Shift key
-                          if (modifierKeys.shift) {
-                            const aspectRatio = layer.width / layer.height;
-                            updatedHeight = newWidth / aspectRatio;
-                          }
-                          
-                          // Center-scale with Alt key
-                          if (modifierKeys.alt) {
-                            const widthDelta = updatedWidth - layer.width;
-                            const heightDelta = updatedHeight - layer.height;
-                            updatedX = layer.x - widthDelta / 2;
-                            updatedY = layer.y - heightDelta / 2;
-                            
-                            // Apply canvas bounds clamping for center-scale
-                            const clamped = clampToCanvas(updatedX, updatedY, updatedWidth, updatedHeight);
-                            updatedX = clamped.x;
-                            updatedY = clamped.y;
-                          }
-                          
-                          // Scale font size with resize (our decision from task 2)
-                          const scaleX = updatedWidth / layer.width;
-                          const scaleY = updatedHeight / layer.height;
-                          const avgScale = (scaleX + scaleY) / 2;
-                          updatedFontSize = Math.max(8, layer.fontSize * avgScale);
-                          
-                          const updatedLayers = textLayers.map(l => 
-                            l.id === layer.id 
-                              ? { 
-                                  ...l, 
-                                  x: updatedX,
-                                  y: updatedY,
-                                  width: updatedWidth, 
-                                  height: updatedHeight, 
-                                  fontSize: updatedFontSize 
-                                }
-                              : l
-                          );
-                          onTextLayersChange(updatedLayers);
-                        }
-                      }}
-                      onDragEnd={() => setIsResizing(false)}
-                    />
-                    
-                    {/* Rotation handle */}
-                    <Circle
-                      x={layer.x + layer.width / 2}
-                      y={layer.y - 20}
-                      radius={6}
-                      fill="white"
-                      stroke="#007bff"
-                      strokeWidth={2}
-                      draggable
-                      onMouseEnter={(e) => {
-                        const container = e.target.getStage()?.container();
-                        if (container) container.style.cursor = 'crosshair';
-                      }}
-                      onMouseLeave={(e) => {
-                        const container = e.target.getStage()?.container();
-                        if (container) container.style.cursor = 'default';
-                      }}
-                      onDragStart={() => setIsRotating(true)}
-                      onDragMove={(e) => {
-                        const centerX = layer.x + layer.width / 2;
-                        const centerY = layer.y + layer.height / 2;
-                        
-                        const angle = Math.atan2(
-                          e.target.y() - centerY,
-                          e.target.x() - centerX
-                        ) * 180 / Math.PI;
-                        
-                        // Apply angle snapping
-                        const snappedAngle = snapAngle(angle + 90); // +90 to align with visual expectation
-                        
-                        if (onTextLayersChange) {
-                          const updatedLayers = textLayers.map(l => 
-                            l.id === layer.id 
-                              ? { ...l, rotation: snappedAngle }
-                              : l
-                          );
-                          onTextLayersChange(updatedLayers);
-                        }
-                      }}
-                      onDragEnd={() => setIsRotating(false)}
-                    />
-                    
-                    {/* Visual connection line to rotation handle */}
-                    <Line
-                      points={[
-                        layer.x + layer.width / 2, layer.y,
-                        layer.x + layer.width / 2, layer.y - 20
-                      ]}
-                      stroke="#007bff"
-                      strokeWidth={1}
-                      opacity={0.5}
-                      listening={false}
-                    />
-                  </>
-                )}
-              </Group>
-              
-              {/* Editing placeholder when editing */}
-              {isEditingThis && (
-                <Rect
-                  x={layer.x - 2}
-                  y={layer.y - 2}
-                  width={layer.width + 4}
-                  height={layer.height + 4}
-                  fill="rgba(255, 255, 255, 0.8)"
-                  stroke="#007bff"
-                  strokeWidth={2}
-                  listening={false}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
+        <TextLayers
+          textLayers={textLayers}
+          selectedLayerId={selectedLayerId}
+          isEditing={isEditing}
+          editingLayerId={editingLayerId}
+          isDragging={isDragging}
+          modifierKeys={modifierKeys}
+          onTextLayersChange={onTextLayersChange}
+          onTextClick={handleTextClick}
+          onTextDoubleClick={handleTextDoubleClick}
+          onTextMouseEnter={handleTextMouseEnter}
+          onTextMouseLeave={handleTextMouseLeave}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          onResizeMouseEnter={handleResizeMouseEnter}
+          onResizeMouseLeave={handleResizeMouseLeave}
+          onResizeDragStart={handleResizeDragStart}
+          onResizeDragMove={handleResizeDragMove}
+          onResizeDragEnd={handleResizeDragEnd}
+          onRotationMouseEnter={handleRotationMouseEnter}
+          onRotationMouseLeave={handleRotationMouseLeave}
+          onRotationDragStart={handleRotationDragStart}
+          onRotationDragMove={handleRotationDragMove}
+          onRotationDragEnd={handleRotationDragEnd}
+        />
       </Layer>
       </Stage>
 
