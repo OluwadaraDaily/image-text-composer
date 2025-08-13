@@ -32,8 +32,7 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
 
   const handleBringForward = useCallback((layerId: string) => {
     setTextLayers(prev => {
-      const layers = [...prev];
-      console.log("handleBringForward LAYERS =>", layers);
+      const layers = [...prev].sort((a, b) => a.zIndex - b.zIndex);
       const currentIndex = layers.findIndex(layer => layer.id === layerId);
       
       if (currentIndex === -1 || currentIndex === layers.length - 1) return prev;
@@ -46,19 +45,14 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
       layerToMove.zIndex = nextLayer.zIndex;
       nextLayer.zIndex = tempZIndex;
       
-      // Sort by zIndex to maintain correct order
       return layers.sort((a, b) => a.zIndex - b.zIndex);
     });
   }, []);
 
   const handleBringBackward = useCallback((layerId: string) => {
     setTextLayers(prev => {
-      const layers = [...prev];
-      console.log("handleBringBackward LAYERS =>", layers);
-
+      const layers = [...prev].sort((a, b) => a.zIndex - b.zIndex);
       const currentIndex = layers.findIndex(layer => layer.id === layerId);
-
-      console.log("current Index =>", currentIndex);
       
       if (currentIndex === -1 || currentIndex === 0) return prev;
       
@@ -70,7 +64,6 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
       layerToMove.zIndex = prevLayer.zIndex;
       prevLayer.zIndex = tempZIndex;
       
-      // Sort by zIndex to maintain correct order
       return layers.sort((a, b) => a.zIndex - b.zIndex);
     });
   }, []);
@@ -78,7 +71,6 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
   const handleBringToFront = useCallback((layerId: string) => {
     setTextLayers(prev => {
       const layers = [...prev];
-      console.log("handleBringToFront LAYERS =>", layers);
       const currentIndex = layers.findIndex(layer => layer.id === layerId);
       
       if (currentIndex === -1) return prev;
@@ -97,8 +89,6 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
   const handleBringToBack = useCallback((layerId: string) => {
     setTextLayers(prev => {
       const layers = [...prev];
-      console.log("handleBringToBack LAYERS =>", layers);
-      
       const currentIndex = layers.findIndex(layer => layer.id === layerId);
       
       if (currentIndex === -1) return prev;
@@ -130,13 +120,13 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
       opacity: 1,
       alignment: 'center',
       locked: false,
-      zIndex: textLayers.length,
+      zIndex: textLayers.length > 0 ? Math.max(...textLayers.map(l => l.zIndex)) + 1 : 0,
       selected: true,
     };
 
-    setTextLayers(prev => [...prev, newLayer]);
+    setTextLayers(prev => [...prev, newLayer].sort((a, b) => a.zIndex - b.zIndex));
     setSelectedLayerId(newLayer.id);
-  }, [textLayers.length]);
+  }, [textLayers]);
 
   const value = {
     textLayers,
