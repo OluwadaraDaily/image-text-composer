@@ -22,14 +22,7 @@ function ImageEditorContent({
   const { 
     textLayers, 
     selectedLayerId, 
-    setSelectedLayerId, 
-    handleLayerUpdate, 
-    handleBringForward, 
-    handleBringBackward, 
-    handleBringToFront, 
-    handleBringToBack, 
     handleAddText,
-    setTextLayers 
   } = useTextLayers();
 
   useEffect(() => {
@@ -59,8 +52,6 @@ function ImageEditorContent({
     };
   }, [handleAddText, canvasMeta]);
 
-  const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
-
   return (
     <div className="flex h-screen">
       {/* Text Toolbar */}
@@ -77,7 +68,9 @@ function ImageEditorContent({
           </button>
 
           {canvasMeta && (
-            <Button onClick={() => handleAddText(canvasMeta)} size="sm" className="flex items-center gap-2">
+            <Button onClick={() => {
+              handleAddText(canvasMeta);
+            }} size="sm" className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add Text
             </Button>

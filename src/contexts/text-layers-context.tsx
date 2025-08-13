@@ -105,28 +105,33 @@ export function TextLayersProvider({ children }: TextLayersProviderProps) {
   }, []);
 
   const handleAddText = useCallback((canvasMeta: CanvasMeta) => {
-    const newLayer: TextLayer = {
-      id: `text-${Date.now()}`,
-      text: 'New Text',
-      x: canvasMeta.width / 2 - 50, // Center horizontally (rough estimate)
-      y: canvasMeta.height / 2 - 12, // Center vertically (rough estimate)
-      rotation: 0,
-      width: 100,
-      height: 24,
-      fontFamily: 'Arial',
-      fontWeight: 400,
-      fontSize: 18,
-      color: { r: 0, g: 0, b: 0, a: 1 }, // Black
-      opacity: 1,
-      alignment: 'center',
-      locked: false,
-      zIndex: textLayers.length > 0 ? Math.max(...textLayers.map(l => l.zIndex)) + 1 : 0,
-      selected: true,
-    };
-
-    setTextLayers(prev => [...prev, newLayer].sort((a, b) => a.zIndex - b.zIndex));
-    setSelectedLayerId(newLayer.id);
-  }, [textLayers]);
+    const newLayerId = `text-${Date.now()}`;
+    
+    setTextLayers(prev => {
+      const newLayer: TextLayer = {
+        id: newLayerId,
+        text: 'New Text',
+        x: canvasMeta.width / 2 - 50, // Center horizontally (rough estimate)
+        y: canvasMeta.height / 2 - 12, // Center vertically (rough estimate)
+        rotation: 0,
+        width: 100,
+        height: 24,
+        fontFamily: 'Arial',
+        fontWeight: 400,
+        fontSize: 18,
+        color: { r: 0, g: 0, b: 0, a: 1 }, // Black
+        opacity: 1,
+        alignment: 'center',
+        locked: false,
+        zIndex: prev.length > 0 ? Math.max(...prev.map(l => l.zIndex)) + 1 : 0,
+        selected: true,
+      };
+      
+      return [...prev, newLayer].sort((a, b) => a.zIndex - b.zIndex);
+    });
+    
+    setSelectedLayerId(newLayerId);
+  }, []);
 
   const value = {
     textLayers,
