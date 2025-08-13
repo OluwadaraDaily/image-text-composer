@@ -1,42 +1,20 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { HexColorPicker } from 'react-colorful';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useMemo, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { useTextLayers } from '@/contexts/text-layers-context';
-import { 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight,
-  Palette,
-  Type,
-  Minus,
-  Plus,
-  Loader2,
-  ChevronDown
-} from 'lucide-react';
+import { Type } from 'lucide-react';
 import { useGoogleFonts, useInfiniteGoogleFonts } from '@/hooks/useGoogleFonts';
+import { FontFamilySelector } from '@/components/text-controls/font-family-selector';
+import { FontWeightSelector } from '@/components/text-controls/font-weight-selector';
+import { FontSizeControl } from '@/components/text-controls/font-size-control';
+import { TextAlignmentControl } from '@/components/text-controls/text-alignment-control';
+import { ColorPicker } from '@/components/text-controls/color-picker';
+import { OpacitySlider } from '@/components/text-controls/opacity-slider';
 
 
-const getWeightLabel = (weight: string) => {
-  const weightMap: Record<string, string> = {
-    '100': 'Thin',
-    '200': 'Extra Light',
-    '300': 'Light',
-    '400': 'Regular',
-    '500': 'Medium',
-    '600': 'Semi Bold',
-    '700': 'Bold',
-    '800': 'Extra Bold',
-    '900': 'Black'
-  };
-  return weightMap[weight] || weight;
-};
 
 export function TextToolbar() {
   const { textLayers, selectedLayerId, handleLayerUpdate } = useTextLayers();
@@ -54,13 +32,9 @@ export function TextToolbar() {
   console.log("isFetchingNextPage =>", isFetchingNextPage)
   console.log("infiniteError =>", infiniteError)
   
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['Arial']));
   const [fontLoadingStates, setFontLoadingStates] = useState<Set<string>>(new Set());
-  const [showFontDropdown, setShowFontDropdown] = useState(false);
   const [preloadedFonts, setPreloadedFonts] = useState<Set<string>>(new Set());
-  const fontDropdownRef = useRef<HTMLDivElement>(null);
-  const fontListRef = useRef<HTMLDivElement>(null);
   
   const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
   
@@ -162,114 +136,11 @@ export function TextToolbar() {
     preloadPopularFonts();
   }, [availableFonts]);
 
-  // Preload fonts when dropdown opens
-  useEffect(() => {
-    if (showFontDropdown && availableFonts.length > 0) {
-      const preloadVisibleFonts = async () => {
-        const visibleFonts = availableFonts.slice(0, 10); // Preload first 10
-        for (const font of visibleFonts) {
-          if (!loadedFonts.has(font.family) && !fontLoadingStates.has(font.family)) {
-            await loadGoogleFont(font.family, font.variants, true);
-          }
-        }
-      };
-      preloadVisibleFonts();
-    }
-  }, [showFontDropdown, availableFonts]);
 
-  const handleColorChange = (color: string) => {
-    if (!selectedLayer) return;
-    
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    handleLayerUpdate(selectedLayer.id, {
-      color: { r, g, b, a: selectedLayer.color.a }
-    });
-  };
-
-  const handleFontSizeChange = (direction: 'up' | 'down') => {
-    if (!selectedLayer) return;
-    
-    const change = direction === 'up' ? 2 : -2;
-    const newSize = Math.max(8, Math.min(200, selectedLayer.fontSize + change));
-    
-    handleLayerUpdate(selectedLayer.id, { fontSize: newSize });
-  };
-
-  // Scroll detection for infinite loading - only when dropdown is open
-  useEffect(() => {
-    if (!showFontDropdown) return;
-
-    const handleScroll = (e: Event) => {
-      console.log('Scroll event triggered!', e.target);
-      
-      if (!fontListRef.current) {
-        console.log('No fontListRef.current');
-        return;
-      }
-      
-      const { scrollTop, scrollHeight, clientHeight } = fontListRef.current;
-      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
-      
-      console.log('Scroll debug:', {
-        scrollTop,
-        scrollHeight,
-        clientHeight,
-        isNearBottom,
-        hasNextPage,
-        isFetchingNextPage,
-        availableFontsLength: availableFonts.length,
-        calculation: `${scrollTop} + ${clientHeight} >= ${scrollHeight} - 100 = ${scrollTop + clientHeight >= scrollHeight - 100}`
-      });
-      
-      if (isNearBottom && hasNextPage && !isFetchingNextPage) {
-        console.log('Fetching next page...');
-        fetchNextPage();
-      }
-    };
-
-    // Small delay to ensure the DOM is rendered
-    const timeoutId = setTimeout(() => {
-      const fontList = fontListRef.current;
-      console.log('Setting up scroll listener on:', fontList);
-      
-      if (fontList) {
-        fontList.addEventListener('scroll', handleScroll);
-      }
-    }, 0);
-    
-    return () => {
-      clearTimeout(timeoutId);
-      const fontList = fontListRef.current;
-      if (fontList) {
-        console.log('Removing scroll listener');
-        fontList.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [showFontDropdown, hasNextPage, isFetchingNextPage, fetchNextPage, availableFonts.length]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (fontDropdownRef.current && !fontDropdownRef.current.contains(event.target as Node)) {
-        setShowFontDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleFontFamilyChange = (fontFamily: string) => {
     if (!selectedLayer) return;
-    
-    const font = availableFonts.find(f => f.family === fontFamily);
-    loadGoogleFont(fontFamily, font?.variants);
     handleLayerUpdate(selectedLayer.id, { fontFamily });
-    setShowFontDropdown(false);
   };
 
   const handleFontWeightChange = (weight: string) => {
@@ -282,19 +153,24 @@ export function TextToolbar() {
     handleLayerUpdate(selectedLayer.id, { alignment });
   };
 
-  const handleOpacityChange = (value: number[]) => {
+  const handleColorChange = (color: { r: number; g: number; b: number; a: number }) => {
     if (!selectedLayer) return;
-    handleLayerUpdate(selectedLayer.id, { opacity: value[0] / 100 });
+    handleLayerUpdate(selectedLayer.id, { color });
   };
 
-  const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
-    const toHex = (n: number) => n.toString(16).padStart(2, '0');
-    return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
+  const handleOpacityChange = (opacity: number) => {
+    if (!selectedLayer) return;
+    handleLayerUpdate(selectedLayer.id, { opacity });
+  };
+
+  const handleFontSizeChange = (fontSize: number) => {
+    if (!selectedLayer) return;
+    handleLayerUpdate(selectedLayer.id, { fontSize });
   };
 
   if (!selectedLayer) {
     return (
-      <div className="w-64 bg-gray-50 border-r p-4 flex items-center justify-center text-gray-500">
+      <div className="w-64 bg-red-500 border-r p-4 flex items-center justify-center text-gray-500">
         <div className="text-center">
           <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">Select a text layer to edit</p>
@@ -306,202 +182,48 @@ export function TextToolbar() {
   return (
     <div className="w-64 bg-gray-50 border-r p-4 space-y-6">
       <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">Font Family</Label>
-          <div className="relative" ref={fontDropdownRef}>
-            <button
-              onClick={() => setShowFontDropdown(!showFontDropdown)}
-              className="w-full mt-1 px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
-            >
-              <span className="truncate flex items-center gap-2" style={{ fontFamily: loadedFonts.has(selectedLayer.fontFamily) ? selectedLayer.fontFamily : 'inherit' }}>
-                {selectedLayer.fontFamily}
-                {fontLoadingStates.has(selectedLayer.fontFamily) && (
-                  <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                )}
-                {loadedFonts.has(selectedLayer.fontFamily) && selectedLayer.fontFamily !== 'Arial' && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
-                )}
-              </span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </button>
-            
-            {showFontDropdown && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-                {fontsLoading ? (
-                  <div className="p-4 flex items-center gap-2 text-gray-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading fonts...
-                  </div>
-                ) : (
-                  <div 
-                    ref={fontListRef}
-                    className="max-h-60 overflow-y-auto"
-                  >
-                    {availableFonts.map((font, index) => (
-                      <button
-                        key={font.family + `${index}`}
-                        onClick={() => handleFontFamilyChange(font.family)}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center gap-2"
-                        style={{ fontFamily: loadedFonts.has(font.family) ? font.family : 'inherit' }}
-                      >
-                        <span className="flex-1" style={{ 
-                          fontFamily: loadedFonts.has(font.family) ? font.family : 'inherit',
-                          opacity: loadedFonts.has(font.family) ? 1 : 0.7
-                        }}>
-                          {font.family}
-                        </span>
-                        {fontLoadingStates.has(font.family) && (
-                          <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
-                        )}
-                        {loadedFonts.has(font.family) && (
-                          <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
-                        )}
-                      </button>
-                    ))}
-                    
-                    {isFetchingNextPage && (
-                      <div className="p-3 text-center text-gray-500">
-                        <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                        <div className="text-xs mt-1">Loading more fonts...</div>
-                      </div>
-                    )}
-                    
-                    {!hasNextPage && availableFonts.length > 15 && (
-                      <div className="p-3 text-center text-gray-400 text-xs border-t">
-                        All fonts loaded ({availableFonts.length} total)
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <FontFamilySelector
+          value={selectedLayer.fontFamily}
+          fonts={availableFonts}
+          loadedFonts={loadedFonts}
+          fontLoadingStates={fontLoadingStates}
+          isLoading={fontsLoading}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onChange={handleFontFamilyChange}
+          onLoadFont={loadGoogleFont}
+          onFetchNextPage={fetchNextPage}
+        />
 
-        <div>
-          <Label className="text-sm font-medium">Font Weight</Label>
-          <Select value={selectedLayer.fontWeight.toString()} onValueChange={handleFontWeightChange}>
-            <SelectTrigger className="w-full mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableWeights.map((weight) => (
-                <SelectItem key={weight} value={weight}>
-                  {getWeightLabel(weight)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FontWeightSelector
+          value={selectedLayer.fontWeight}
+          availableWeights={availableWeights}
+          onChange={handleFontWeightChange}
+        />
 
-        <div>
-          <Label className="text-sm font-medium">Font Size</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleFontSizeChange('down')}
-              disabled={selectedLayer.fontSize <= 8}
-            >
-              <Minus className="w-3 h-3" />
-            </Button>
-            <Input
-              type="number"
-              value={selectedLayer.fontSize}
-              onChange={(e) => {
-                const size = parseInt(e.target.value) || 18;
-                handleLayerUpdate(selectedLayer.id, { fontSize: Math.max(8, Math.min(200, size)) });
-              }}
-              className="text-center"
-              min="8"
-              max="200"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleFontSizeChange('up')}
-              disabled={selectedLayer.fontSize >= 200}
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
-          </div>
-        </div>
+        <FontSizeControl
+          value={selectedLayer.fontSize}
+          onChange={handleFontSizeChange}
+        />
 
         <Separator />
 
-        <div>
-          <Label className="text-sm font-medium">Text Alignment</Label>
-          <div className="flex gap-1 mt-1">
-            <Button
-              variant={selectedLayer.alignment === 'left' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleAlignmentChange('left')}
-            >
-              <AlignLeft className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={selectedLayer.alignment === 'center' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleAlignmentChange('center')}
-            >
-              <AlignCenter className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={selectedLayer.alignment === 'right' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleAlignmentChange('right')}
-            >
-              <AlignRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <TextAlignmentControl
+          value={selectedLayer.alignment}
+          onChange={handleAlignmentChange}
+        />
 
         <Separator />
 
-        <div>
-          <Label className="text-sm font-medium">Text Color</Label>
-          <div className="mt-1">
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => setShowColorPicker(!showColorPicker)}
-            >
-              <div
-                className="w-4 h-4 rounded border"
-                style={{ backgroundColor: rgbaToHex(selectedLayer.color) }}
-              />
-              <Palette className="w-4 h-4" />
-              Color
-            </Button>
-            {showColorPicker && (
-              <div className="mt-2 p-2 border rounded-lg bg-white">
-                <HexColorPicker
-                  color={rgbaToHex(selectedLayer.color)}
-                  onChange={handleColorChange}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <ColorPicker
+          value={selectedLayer.color}
+          onChange={handleColorChange}
+        />
 
-        <div>
-          <Label className="text-sm font-medium">Opacity</Label>
-          <div className="mt-2 px-1">
-            <Slider
-              value={[selectedLayer.opacity * 100]}
-              onValueChange={handleOpacityChange}
-              max={100}
-              min={0}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>0%</span>
-              <span>{Math.round(selectedLayer.opacity * 100)}%</span>
-              <span>100%</span>
-            </div>
-          </div>
-        </div>
+        <OpacitySlider
+          value={selectedLayer.opacity}
+          onChange={handleOpacityChange}
+        />
       </div>
     </div>
   );
