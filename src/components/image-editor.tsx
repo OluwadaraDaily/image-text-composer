@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ImageCanvas } from '@/components/canvas/image-canvas';
 import { TextToolbar } from '@/components/text-toolbar';
-import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
+import type { ImageAsset, CanvasMeta } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { TextLayersProvider, useTextLayers } from '@/contexts/text-layers-context';
 
 interface ImageEditorProps {
   image: ImageAsset;
@@ -12,46 +13,24 @@ interface ImageEditorProps {
   onReset: () => void;
 }
 
-export function ImageEditor({ 
+function ImageEditorContent({ 
   image, 
   canvasMeta, 
   onCanvasMetaUpdate, 
   onReset 
 }: ImageEditorProps) {
-  const [textLayers, setTextLayers] = useState<TextLayer[]>([]);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
-
-  const handleLayerUpdate = useCallback((layerId: string, updates: Partial<TextLayer>) => {
-    setTextLayers(prev => prev.map(layer => 
-      layer.id === layerId ? { ...layer, ...updates } : layer
-    ));
-  }, []);
-
-  const handleAddText = useCallback(() => {
-    if (!canvasMeta) return;
-
-    const newLayer: TextLayer = {
-      id: `text-${Date.now()}`,
-      text: 'New Text',
-      x: canvasMeta.width / 2 - 50, // Center horizontally (rough estimate)
-      y: canvasMeta.height / 2 - 12, // Center vertically (rough estimate)
-      rotation: 0,
-      width: 100,
-      height: 24,
-      fontFamily: 'Arial',
-      fontWeight: 400,
-      fontSize: 18,
-      color: { r: 0, g: 0, b: 0, a: 1 }, // Black
-      opacity: 1,
-      alignment: 'center',
-      locked: false,
-      zIndex: textLayers.length,
-      selected: true,
-    };
-
-    setTextLayers(prev => [...prev, newLayer]);
-    setSelectedLayerId(newLayer.id);
-  }, [canvasMeta, textLayers.length]);
+  const { 
+    textLayers, 
+    selectedLayerId, 
+    setSelectedLayerId, 
+    handleLayerUpdate, 
+    handleBringForward, 
+    handleBringBackward, 
+    handleBringToFront, 
+    handleBringToBack, 
+    handleAddText,
+    setTextLayers 
+  } = useTextLayers();
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -66,10 +45,10 @@ export function ImageEditor({
       
       if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey) {
         event.preventDefault();
-        handleAddText();
+        if (canvasMeta) handleAddText(canvasMeta);
       } else if ((event.key === 't' || event.key === 'T') && (event.ctrlKey || event.metaKey)) {
         event.preventDefault();
-        handleAddText();
+        if (canvasMeta) handleAddText(canvasMeta);
       }
     };
 
@@ -78,17 +57,14 @@ export function ImageEditor({
     return () => {
       document.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [handleAddText]);
+  }, [handleAddText, canvasMeta]);
 
   const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
 
   return (
     <div className="flex h-screen">
       {/* Text Toolbar */}
-      <TextToolbar 
-        selectedLayer={selectedLayer}
-        onLayerUpdate={handleLayerUpdate}
-      />
+      <TextToolbar />
       
       {/* Main Editor Area */}
       <div className="flex-1 space-y-6 p-6">
@@ -101,7 +77,7 @@ export function ImageEditor({
           </button>
 
           {canvasMeta && (
-            <Button onClick={handleAddText} size="sm" className="flex items-center gap-2">
+            <Button onClick={() => handleAddText(canvasMeta)} size="sm" className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add Text
             </Button>
@@ -114,10 +90,6 @@ export function ImageEditor({
             onCanvasMetaUpdate={onCanvasMetaUpdate}
             maxCanvasWidth={800}
             maxCanvasHeight={600}
-            textLayers={textLayers}
-            selectedLayerId={selectedLayerId}
-            onTextLayersChange={setTextLayers}
-            onSelectedLayerChange={setSelectedLayerId}
           />
         </div>
 
@@ -132,5 +104,13 @@ export function ImageEditor({
         )}
       </div>
     </div>
+  );
+}
+
+export function ImageEditor(props: ImageEditorProps) {
+  return (
+    <TextLayersProvider>
+      <ImageEditorContent {...props} />
+    </TextLayersProvider>
   );
 }

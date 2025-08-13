@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
+import { useTextLayers } from '@/contexts/text-layers-context';
 import { 
   AlignLeft, 
   AlignCenter, 
@@ -19,10 +20,7 @@ import {
   Plus
 } from 'lucide-react';
 
-interface TextToolbarProps {
-  selectedLayer: TextLayer | null;
-  onLayerUpdate: (layerId: string, updates: Partial<TextLayer>) => void;
-}
+interface TextToolbarProps {}
 
 const GOOGLE_FONTS = [
   'Arial',
@@ -56,9 +54,12 @@ const FONT_WEIGHTS = [
   { value: 800, label: 'Extra Bold' },
 ];
 
-export function TextToolbar({ selectedLayer, onLayerUpdate }: TextToolbarProps) {
+export function TextToolbar({}: TextToolbarProps) {
+  const { textLayers, selectedLayerId, handleLayerUpdate } = useTextLayers();
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['Arial']));
+  
+  const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
 
   const loadGoogleFont = async (fontFamily: string) => {
     if (loadedFonts.has(fontFamily) || fontFamily === 'Arial') {
@@ -92,7 +93,7 @@ export function TextToolbar({ selectedLayer, onLayerUpdate }: TextToolbarProps) 
     const g = parseInt(hex.substring(2, 4), 16);
     const b = parseInt(hex.substring(4, 6), 16);
     
-    onLayerUpdate(selectedLayer.id, {
+    handleLayerUpdate(selectedLayer.id, {
       color: { r, g, b, a: selectedLayer.color.a }
     });
   };
@@ -103,29 +104,29 @@ export function TextToolbar({ selectedLayer, onLayerUpdate }: TextToolbarProps) 
     const change = direction === 'up' ? 2 : -2;
     const newSize = Math.max(8, Math.min(200, selectedLayer.fontSize + change));
     
-    onLayerUpdate(selectedLayer.id, { fontSize: newSize });
+    handleLayerUpdate(selectedLayer.id, { fontSize: newSize });
   };
 
   const handleFontFamilyChange = (fontFamily: string) => {
     if (!selectedLayer) return;
     
     loadGoogleFont(fontFamily);
-    onLayerUpdate(selectedLayer.id, { fontFamily });
+    handleLayerUpdate(selectedLayer.id, { fontFamily });
   };
 
   const handleFontWeightChange = (weight: string) => {
     if (!selectedLayer) return;
-    onLayerUpdate(selectedLayer.id, { fontWeight: parseInt(weight) });
+    handleLayerUpdate(selectedLayer.id, { fontWeight: parseInt(weight) });
   };
 
   const handleAlignmentChange = (alignment: 'left' | 'center' | 'right') => {
     if (!selectedLayer) return;
-    onLayerUpdate(selectedLayer.id, { alignment });
+    handleLayerUpdate(selectedLayer.id, { alignment });
   };
 
   const handleOpacityChange = (value: number[]) => {
     if (!selectedLayer) return;
-    onLayerUpdate(selectedLayer.id, { opacity: value[0] / 100 });
+    handleLayerUpdate(selectedLayer.id, { opacity: value[0] / 100 });
   };
 
   const rgbaToHex = (color: { r: number; g: number; b: number; a: number }) => {
@@ -195,7 +196,7 @@ export function TextToolbar({ selectedLayer, onLayerUpdate }: TextToolbarProps) 
               value={selectedLayer.fontSize}
               onChange={(e) => {
                 const size = parseInt(e.target.value) || 18;
-                onLayerUpdate(selectedLayer.id, { fontSize: Math.max(8, Math.min(200, size)) });
+                handleLayerUpdate(selectedLayer.id, { fontSize: Math.max(8, Math.min(200, size)) });
               }}
               className="text-center"
               min="8"

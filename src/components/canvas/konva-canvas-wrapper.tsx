@@ -2,25 +2,29 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import type { CanvasMeta, TextLayer } from '@/types';
 import TextLayers from './text-layers';
+import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
+import { useTextLayers } from '@/contexts/text-layers-context';
 
 
 interface KonvaCanvasWrapperProps {
   imageObject: HTMLImageElement;
   canvasMeta: CanvasMeta;
-  textLayers?: TextLayer[];
-  selectedLayerId?: string | null;
-  onTextLayersChange?: (layers: TextLayer[]) => void;
-  onSelectedLayerChange?: (layerId: string | null) => void;
 }
 
 export default function KonvaCanvasWrapper({ 
   imageObject, 
-  canvasMeta, 
-  textLayers = [],
-  selectedLayerId,
-  onTextLayersChange,
-  onSelectedLayerChange
+  canvasMeta
 }: KonvaCanvasWrapperProps) {
+  const { 
+    textLayers, 
+    selectedLayerId, 
+    setTextLayers, 
+    setSelectedLayerId, 
+    handleBringForward, 
+    handleBringBackward, 
+    handleBringToFront, 
+    handleBringToBack 
+  } = useTextLayers();
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
@@ -33,6 +37,12 @@ export default function KonvaCanvasWrapper({
   const [isRotating, setIsRotating] = useState(false);
   const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [modifierKeys, setModifierKeys] = useState({ shift: false, alt: false });
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    layerId: string | null;
+  }>({ visible: false, x: 0, y: 0, layerId: null });
 
   // Utility functions
   const snapAngle = (angle: number): number => {
@@ -62,7 +72,7 @@ export default function KonvaCanvasWrapper({
     
     if (!selectedLayerId) {
       // If nothing selected, select first layer
-      onSelectedLayerChange?.(sortedLayers[0].id);
+      setSelectedLayerId(sortedLayers[0].id);
       return;
     }
 
@@ -70,7 +80,7 @@ export default function KonvaCanvasWrapper({
     
     if (currentIndex === -1) {
       // If selected layer not found, select first layer
-      onSelectedLayerChange?.(sortedLayers[0].id);
+      setSelectedLayerId(sortedLayers[0].id);
       return;
     }
 
@@ -81,23 +91,77 @@ export default function KonvaCanvasWrapper({
       nextIndex = (currentIndex - 1 + sortedLayers.length) % sortedLayers.length;
     }
 
-    onSelectedLayerChange?.(sortedLayers[nextIndex].id);
-  }, [textLayers, selectedLayerId, onSelectedLayerChange]);
+    setSelectedLayerId(sortedLayers[nextIndex].id);
+  }, [textLayers, selectedLayerId, setSelectedLayerId]);
 
   // Stage event handlers
   const handleStageClick = (e: any) => {
+    // Only handle left clicks, ignore right clicks
+    if (e.evt.button !== 0) return;
+    
     if (e.target === e.target.getStage()) {
-      onSelectedLayerChange?.(null);
+      setSelectedLayerId(null);
       setIsEditing(false);
       setEditingLayerId(null);
+      handleContextMenuClose(); // Close context menu when clicking on stage
+    }
+  };
+
+  // Context menu handlers
+  const handleContextMenuClose = () => {
+    setContextMenu({ visible: false, x: 0, y: 0, layerId: null });
+  };
+
+  const handleContextMenuAction = (action: string, layerId: string) => {
+    handleContextMenuClose();
+    
+    switch (action) {
+      case 'bring-forward':
+        handleBringForward(layerId);
+        break;
+      case 'bring-backward':
+        handleBringBackward(layerId);
+        break;
+      case 'bring-to-front':
+        handleBringToFront(layerId);
+        break;
+      case 'bring-to-back':
+        handleBringToBack(layerId);
+        break;
     }
   };
 
   // Text event handlers
-  const handleTextClick = (layerId: string) => {
-    onSelectedLayerChange?.(layerId);
+  const handleTextClick = (layerId: string, e?: any) => {
+    // Only handle left clicks, ignore right clicks
+    if (e && e.evt && e.evt.button !== 0) return;
+    
+    setSelectedLayerId(layerId);
     setIsEditing(false);
     setEditingLayerId(null);
+    handleContextMenuClose(); // Close context menu on click
+  };
+
+  const handleTextRightClick = (layerId: string, e: any) => {
+    e.evt.preventDefault(); // Prevent browser context menu
+    
+    const stage = e.target.getStage();
+    const pointerPosition = stage.getPointerPosition();
+    const stageContainer = stage.container();
+    const rect = stageContainer.getBoundingClientRect();
+    
+    // Calculate absolute position by adding canvas offset to pointer position
+    const absoluteX = rect.left + pointerPosition.x;
+    const absoluteY = rect.top + pointerPosition.y;
+    
+    setContextMenu({
+      visible: true,
+      x: absoluteX,
+      y: absoluteY,
+      layerId
+    });
+    
+    setSelectedLayerId(layerId);
   };
 
   const handleTextDoubleClick = (layerId: string) => {
@@ -106,7 +170,7 @@ export default function KonvaCanvasWrapper({
       setIsEditing(true);
       setEditingLayerId(layerId);
       setEditingText(layer.text);
-      onSelectedLayerChange?.(layerId);
+      setSelectedLayerId(layerId);
     }
   };
 
@@ -124,7 +188,7 @@ export default function KonvaCanvasWrapper({
   const handleDragStart = (layerId: string, e: any) => {
     setIsDragging(true);
     setDragStartPos({ x: e.target.x(), y: e.target.y() });
-    onSelectedLayerChange?.(layerId);
+    setSelectedLayerId(layerId);
   };
 
   const handleDragMove = (layerId: string, e: any) => {
@@ -134,7 +198,7 @@ export default function KonvaCanvasWrapper({
 
     dragAnimationRef.current = requestAnimationFrame(() => {
       const layer = textLayers.find(l => l.id === layerId);
-      if (!layer || !onTextLayersChange) return;
+      if (!layer || !setTextLayers) return;
 
       let newX = e.target.x();
       let newY = e.target.y();
@@ -157,7 +221,7 @@ export default function KonvaCanvasWrapper({
       cancelAnimationFrame(dragAnimationRef.current);
     }
 
-    if (!onTextLayersChange) return;
+    if (!setTextLayers) return;
 
     const layer = textLayers.find(l => l.id === layerId);
     if (!layer) return;
@@ -173,7 +237,7 @@ export default function KonvaCanvasWrapper({
         ? { ...l, x: clamped.x, y: clamped.y }
         : l
     );
-    onTextLayersChange(updatedLayers);
+    setTextLayers(updatedLayers);
   };
 
   // Resize handle event handlers
@@ -193,7 +257,7 @@ export default function KonvaCanvasWrapper({
     const newWidth = Math.max(20, e.target.x() - layer.x);
     const newHeight = Math.max(15, e.target.y() - layer.y);
     
-    if (onTextLayersChange) {
+    if (setTextLayers) {
       let updatedWidth = newWidth;
       let updatedHeight = newHeight;
       let updatedFontSize = layer.fontSize;
@@ -237,7 +301,7 @@ export default function KonvaCanvasWrapper({
             }
           : l
       );
-      onTextLayersChange(updatedLayers);
+      setTextLayers(updatedLayers);
     }
   };
 
@@ -246,7 +310,7 @@ export default function KonvaCanvasWrapper({
   // Rotation handle event handlers
   const handleRotationMouseEnter = (e: any) => {
     const container = e.target.getStage()?.container();
-    if (container) container.style.cursor = 'crosshair';
+    if (container) container.style.cursor = 'url("data:image/svg+xml,%3csvg width=\'24\' height=\'24\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3cpath d=\'M12 2L10 6h4L12 2zM2 12l4-2v4L2 12zm20 0l-4-2v4l4-2zM12 22l2-4h-4l2 4z\' fill=\'%23333\'/%3e%3c/svg%3e") 12 12, auto';
   };
 
   const handleRotationMouseLeave = (e: any) => {
@@ -268,13 +332,13 @@ export default function KonvaCanvasWrapper({
     // Apply angle snapping
     const snappedAngle = snapAngle(angle + 90); // +90 to align with visual expectation
     
-    if (onTextLayersChange) {
+    if (setTextLayers) {
       const updatedLayers = textLayers.map(l => 
         l.id === layer.id 
           ? { ...l, rotation: snappedAngle }
           : l
       );
-      onTextLayersChange(updatedLayers);
+      setTextLayers(updatedLayers);
     }
   };
 
@@ -282,19 +346,19 @@ export default function KonvaCanvasWrapper({
 
   // Text editing handlers
   const finishEditing = () => {
-    if (editingLayerId && onTextLayersChange) {
+    if (editingLayerId && setTextLayers) {
       const updatedLayers = textLayers.map(layer => 
         layer.id === editingLayerId 
           ? { ...layer, text: editingText }
           : layer
       );
-      onTextLayersChange(updatedLayers);
+      setTextLayers(updatedLayers);
     }
     setIsEditing(false);
     setEditingLayerId(null);
     setEditingText('');
     // Deselect the text after editing to hide the selection box
-    onSelectedLayerChange?.(null);
+    setSelectedLayerId(null);
   };
 
   const cancelEditing = () => {
@@ -302,7 +366,7 @@ export default function KonvaCanvasWrapper({
     setEditingLayerId(null);
     setEditingText('');
     // Deselect the text when canceling editing to hide the selection box
-    onSelectedLayerChange?.(null);
+    setSelectedLayerId(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -339,7 +403,7 @@ export default function KonvaCanvasWrapper({
         if (isEditing) {
           cancelEditing();
         } else if (selectedLayerId) {
-          onSelectedLayerChange?.(null);
+          setSelectedLayerId(null);
         }
       }
       
@@ -347,10 +411,10 @@ export default function KonvaCanvasWrapper({
       if (e.key === 'Backspace' && !isEditing && selectedLayerId) {
         e.preventDefault();
         // Delete the selected layer
-        if (onTextLayersChange) {
+        if (setTextLayers) {
           const updatedLayers = textLayers.filter(l => l.id !== selectedLayerId);
-          onTextLayersChange(updatedLayers);
-          onSelectedLayerChange?.(null);
+          setTextLayers(updatedLayers);
+          setSelectedLayerId(null);
         }
       }
       
@@ -359,7 +423,7 @@ export default function KonvaCanvasWrapper({
         e.preventDefault();
         
         const layer = textLayers.find(l => l.id === selectedLayerId);
-        if (!layer || !onTextLayersChange) return;
+        if (!layer || !setTextLayers) return;
         
         const nudgeDistance = e.shiftKey ? 10 : 1;
         let deltaX = 0, deltaY = 0;
@@ -377,7 +441,7 @@ export default function KonvaCanvasWrapper({
             ? { ...l, x: clamped.x, y: clamped.y }
             : l
         );
-        onTextLayersChange(updatedLayers);
+        setTextLayers(updatedLayers);
       }
       
       // Handle Tab navigation (only when not in text inputs and not editing)
@@ -414,10 +478,26 @@ export default function KonvaCanvasWrapper({
         cancelAnimationFrame(dragAnimationRef.current);
       }
     };
-  }, [isEditing, selectedLayerId, cycleThroughLayers, textLayers, onTextLayersChange, onSelectedLayerChange]);
+  }, [isEditing, selectedLayerId, cycleThroughLayers, textLayers, setTextLayers, setSelectedLayerId]);
 
 
   const editingLayer = editingLayerId ? textLayers.find(l => l.id === editingLayerId) : null;
+
+  // Get context menu options based on layer position
+  const getContextMenuOptions = (layerId: string) => {
+    const layer = textLayers.find(l => l.id === layerId);
+    if (!layer) return { canMoveUp: false, canMoveDown: false };
+    
+    const sortedLayers = [...textLayers].sort((a, b) => a.zIndex - b.zIndex);
+    const currentIndex = sortedLayers.findIndex(l => l.id === layerId);
+    
+    return {
+      canMoveUp: currentIndex < sortedLayers.length - 1,
+      canMoveDown: currentIndex > 0,
+      isTopmost: currentIndex === sortedLayers.length - 1,
+      isBottommost: currentIndex === 0
+    };
+  };
 
   return (
     <div className="relative">
@@ -443,14 +523,12 @@ export default function KonvaCanvasWrapper({
       {/* Text layers */}
       <Layer>
         <TextLayers
-          textLayers={textLayers}
-          selectedLayerId={selectedLayerId}
           isEditing={isEditing}
           editingLayerId={editingLayerId}
           isDragging={isDragging}
           modifierKeys={modifierKeys}
-          onTextLayersChange={onTextLayersChange}
           onTextClick={handleTextClick}
+          onTextRightClick={handleTextRightClick}
           onTextDoubleClick={handleTextDoubleClick}
           onTextMouseEnter={handleTextMouseEnter}
           onTextMouseLeave={handleTextMouseLeave}
@@ -495,6 +573,48 @@ export default function KonvaCanvasWrapper({
           }}
           rows={1}
         />
+      )}
+
+      {/* Context Menu */}
+      {contextMenu.visible && contextMenu.layerId && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          visible={contextMenu.visible}
+          onClose={handleContextMenuClose}
+        >
+          {(() => {
+            const options = getContextMenuOptions(contextMenu.layerId);
+            return (
+              <>
+                <ContextMenuItem
+                  onClick={() => handleContextMenuAction('bring-forward', contextMenu.layerId!)}
+                  disabled={!options.canMoveUp}
+                >
+                  Bring Forward
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => handleContextMenuAction('bring-backward', contextMenu.layerId!)}
+                  disabled={!options.canMoveDown}
+                >
+                  Send Backward
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => handleContextMenuAction('bring-to-front', contextMenu.layerId!)}
+                  disabled={options.isTopmost}
+                >
+                  Bring to Front
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => handleContextMenuAction('bring-to-back', contextMenu.layerId!)}
+                  disabled={options.isBottommost}
+                >
+                  Send to Back
+                </ContextMenuItem>
+              </>
+            );
+          })()}
+        </ContextMenu>
       )}
     </div>
   );

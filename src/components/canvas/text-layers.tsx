@@ -1,16 +1,15 @@
 import React from 'react';
 import { Text, Rect, Group, Circle, Line } from 'react-konva';
 import type { TextLayer } from '@/types';
+import { useTextLayers } from '@/contexts/text-layers-context';
 
 interface TextLayersProps {
-  textLayers: TextLayer[];
-  selectedLayerId?: string | null;
   isEditing: boolean;
   editingLayerId: string | null;
   isDragging: boolean;
   modifierKeys: { shift: boolean; alt: boolean };
-  onTextLayersChange?: (layers: TextLayer[]) => void;
-  onTextClick: (layerId: string) => void;
+  onTextClick: (layerId: string, e?: any) => void;
+  onTextRightClick?: (layerId: string, e: any) => void;
   onTextDoubleClick: (layerId: string) => void;
   onTextMouseEnter: (e: any) => void;
   onTextMouseLeave: (e: any) => void;
@@ -30,12 +29,12 @@ interface TextLayersProps {
 }
 
 export default function TextLayers({
-  textLayers,
-  selectedLayerId,
   isEditing,
   editingLayerId,
   isDragging,
+  modifierKeys,
   onTextClick,
+  onTextRightClick,
   onTextDoubleClick,
   onTextMouseEnter,
   onTextMouseLeave,
@@ -53,9 +52,14 @@ export default function TextLayers({
   onRotationDragMove,
   onRotationDragEnd
 }: TextLayersProps) {
+  const { textLayers, selectedLayerId } = useTextLayers();
+  
+  // Sort layers by zIndex to ensure correct rendering order
+  const sortedLayers = [...textLayers].sort((a, b) => a.zIndex - b.zIndex);
+
   return (
     <>
-      {textLayers.map((layer) => {
+      {sortedLayers.map((layer) => {
         const isSelected = layer.id === selectedLayerId;
         const isEditingThis = isEditing && editingLayerId === layer.id;
         
@@ -93,7 +97,8 @@ export default function TextLayers({
                 rotation={layer.rotation}
                 opacity={layer.opacity}
                 draggable={!isEditingThis}
-                onClick={() => onTextClick(layer.id)}
+                onClick={(e) => onTextClick(layer.id, e)}
+                onContextMenu={onTextRightClick ? (e) => onTextRightClick(layer.id, e) : undefined}
                 onDblClick={() => onTextDoubleClick(layer.id)}
                 onDragStart={(e) => onDragStart(layer.id, e)}
                 onDragMove={(e) => onDragMove(layer.id, e)}

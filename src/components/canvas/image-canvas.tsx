@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { ImageAsset, CanvasMeta, TextLayer } from '@/types';
+import type { ImageAsset, CanvasMeta } from '@/types';
 import { calculateDisplaySize } from '@/lib/image-utils';
 import { toast } from 'sonner';
+import { useTextLayers } from '@/contexts/text-layers-context';
 
 // Create a wrapper component that will be dynamically imported
 const KonvaCanvas = dynamic(() => import('./konva-canvas-wrapper'), { ssr: false });
@@ -14,22 +15,24 @@ interface ImageCanvasProps {
   onCanvasMetaUpdate?: (meta: CanvasMeta) => void;
   maxCanvasWidth?: number;
   maxCanvasHeight?: number;
-  textLayers?: TextLayer[];
-  selectedLayerId?: string | null;
-  onTextLayersChange?: (layers: TextLayer[]) => void;
-  onSelectedLayerChange?: (layerId: string | null) => void;
 }
 
 export function ImageCanvas({ 
   image, 
   onCanvasMetaUpdate,
   maxCanvasWidth = 800,
-  maxCanvasHeight = 600,
-  textLayers = [],
-  selectedLayerId,
-  onTextLayersChange,
-  onSelectedLayerChange
+  maxCanvasHeight = 600
 }: ImageCanvasProps) {
+  const { 
+    textLayers, 
+    selectedLayerId, 
+    setTextLayers, 
+    setSelectedLayerId, 
+    handleBringForward, 
+    handleBringBackward, 
+    handleBringToFront, 
+    handleBringToBack 
+  } = useTextLayers();
   const [imageObject, setImageObject] = useState<HTMLImageElement | null>(null);
   const [canvasMeta, setCanvasMeta] = useState<CanvasMeta>({
     width: 0,
@@ -112,10 +115,6 @@ export function ImageCanvas({
         <KonvaCanvas
           imageObject={imageObject}
           canvasMeta={canvasMeta}
-          textLayers={textLayers}
-          selectedLayerId={selectedLayerId}
-          onTextLayersChange={onTextLayersChange}
-          onSelectedLayerChange={onSelectedLayerChange}
         />
       </div>
     );
