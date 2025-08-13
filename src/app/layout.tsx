@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ScreenSizeGuard } from "@/components/screen-size-guard";
 
 export const metadata: Metadata = {
   title: "Image Text Composer",
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <QueryProvider>
-          {children}
+          <ScreenSizeGuard>
+            {children}
+          </ScreenSizeGuard>
           <Toaster position="top-right" richColors />
         </QueryProvider>
       </body>
