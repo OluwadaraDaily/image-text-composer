@@ -102,7 +102,7 @@ export function FontFamilySelector({
               <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
             )}
             {loadedFonts.has(value) && value !== 'Arial' && (
-              <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
+              <div className="w-2 h-2 bg-green-900 rounded-full" title="Font loaded" />
             )}
           </span>
           <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -137,7 +137,7 @@ export function FontFamilySelector({
                       <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
                     )}
                     {loadedFonts.has(font.family) && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
+                      <div className="w-2 h-2 bg-green-900 rounded-full" title="Font loaded" />
                     )}
                   </button>
                 ))}
