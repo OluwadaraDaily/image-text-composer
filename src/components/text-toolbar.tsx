@@ -58,6 +58,7 @@ export function TextToolbar() {
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['Arial']));
   const [fontLoadingStates, setFontLoadingStates] = useState<Set<string>>(new Set());
   const [showFontDropdown, setShowFontDropdown] = useState(false);
+  const [preloadedFonts, setPreloadedFonts] = useState<Set<string>>(new Set());
   const fontDropdownRef = useRef<HTMLDivElement>(null);
   const fontListRef = useRef<HTMLDivElement>(null);
   
@@ -93,12 +94,14 @@ export function TextToolbar() {
     return weights.length > 0 ? weights : ['400'];
   }, [selectedFont?.variants]);
 
-  const loadGoogleFont = async (fontFamily: string, weights?: string[]) => {
+  const loadGoogleFont = async (fontFamily: string, weights?: string[], isPreload = false) => {
     if (loadedFonts.has(fontFamily) || fontFamily === 'Arial') {
       return;
     }
 
-    setFontLoadingStates(prev => new Set([...prev, fontFamily]));
+    if (!isPreload) {
+      setFontLoadingStates(prev => new Set([...prev, fontFamily]));
+    }
 
     try {
       const fontName = fontFamily.replace(/\s+/g, '+');
@@ -108,32 +111,71 @@ export function TextToolbar() {
       link.rel = 'stylesheet';
       document.head.appendChild(link);
       
-      // Wait for font to load
+      // Wait for font to load with better timing
       await new Promise((resolve) => {
-        const timeout = setTimeout(resolve, 1000); // Max 1 second wait
+        const timeout = setTimeout(resolve, 3000); // Extended to 3 seconds
         if (document.fonts) {
-          document.fonts.ready.then(() => {
+          // Use FontFace API for better detection
+          const fontFace = new FontFace(fontFamily, `url(https://fonts.gstatic.com/s/${fontName.toLowerCase()}/v1/${fontName}-Regular.woff2)`);
+          fontFace.load().then(() => {
             clearTimeout(timeout);
             resolve(undefined);
+          }).catch(() => {
+            // Fallback to document.fonts.ready
+            document.fonts.ready.then(() => {
+              clearTimeout(timeout);
+              resolve(undefined);
+            });
           });
         } else {
-          setTimeout(resolve, 500); // Fallback for older browsers
+          setTimeout(resolve, 1500); // Longer fallback for older browsers
         }
       });
       
       setLoadedFonts(prev => new Set([...prev, fontFamily]));
+      if (isPreload) {
+        setPreloadedFonts(prev => new Set([...prev, fontFamily]));
+      }
     } catch (error) {
       console.error('Failed to load font:', fontFamily, error);
     } finally {
-      setFontLoadingStates(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(fontFamily);
-        return newSet;
-      });
+      if (!isPreload) {
+        setFontLoadingStates(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fontFamily);
+          return newSet;
+        });
+      }
     }
   };
 
-  // Remove aggressive font preloading - only load fonts when needed
+  // Preload popular fonts when component mounts
+  useEffect(() => {
+    const popularFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald'];
+    const preloadPopularFonts = async () => {
+      for (const fontFamily of popularFonts) {
+        if (availableFonts.some(f => f.family === fontFamily)) {
+          await loadGoogleFont(fontFamily, ['400', '700'], true);
+        }
+      }
+    };
+    preloadPopularFonts();
+  }, [availableFonts]);
+
+  // Preload fonts when dropdown opens
+  useEffect(() => {
+    if (showFontDropdown && availableFonts.length > 0) {
+      const preloadVisibleFonts = async () => {
+        const visibleFonts = availableFonts.slice(0, 10); // Preload first 10
+        for (const font of visibleFonts) {
+          if (!loadedFonts.has(font.family) && !fontLoadingStates.has(font.family)) {
+            await loadGoogleFont(font.family, font.variants, true);
+          }
+        }
+      };
+      preloadVisibleFonts();
+    }
+  }, [showFontDropdown, availableFonts]);
 
   const handleColorChange = (color: string) => {
     if (!selectedLayer) return;
@@ -271,8 +313,14 @@ export function TextToolbar() {
               onClick={() => setShowFontDropdown(!showFontDropdown)}
               className="w-full mt-1 px-3 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
             >
-              <span className="truncate" style={{ fontFamily: loadedFonts.has(selectedLayer.fontFamily) ? selectedLayer.fontFamily : 'inherit' }}>
+              <span className="truncate flex items-center gap-2" style={{ fontFamily: loadedFonts.has(selectedLayer.fontFamily) ? selectedLayer.fontFamily : 'inherit' }}>
                 {selectedLayer.fontFamily}
+                {fontLoadingStates.has(selectedLayer.fontFamily) && (
+                  <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                )}
+                {loadedFonts.has(selectedLayer.fontFamily) && selectedLayer.fontFamily !== 'Arial' && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
+                )}
               </span>
               <ChevronDown className="w-4 h-4 text-gray-400" />
             </button>
@@ -296,9 +344,17 @@ export function TextToolbar() {
                         className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center gap-2"
                         style={{ fontFamily: loadedFonts.has(font.family) ? font.family : 'inherit' }}
                       >
-                        <span className="flex-1">{font.family}</span>
+                        <span className="flex-1" style={{ 
+                          fontFamily: loadedFonts.has(font.family) ? font.family : 'inherit',
+                          opacity: loadedFonts.has(font.family) ? 1 : 0.7
+                        }}>
+                          {font.family}
+                        </span>
                         {fontLoadingStates.has(font.family) && (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                        )}
+                        {loadedFonts.has(font.family) && (
+                          <div className="w-2 h-2 bg-green-500 rounded-full" title="Font loaded" />
                         )}
                       </button>
                     ))}
