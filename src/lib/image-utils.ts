@@ -10,10 +10,8 @@ export async function processImageFile(file: File): Promise<ProcessedImage> {
     // Use createImageBitmap to decode the image
     const bitmap = await createImageBitmap(file);
 
-    // Create object URL for the canvas to use
     const objectUrl = URL.createObjectURL(file);
     
-    // Create ImageAsset with original dimensions
     const asset: ImageAsset = {
       src: objectUrl,
       width: bitmap.width,

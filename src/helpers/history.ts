@@ -1,4 +1,4 @@
-import type { EditorHistory, DocumentState, HistoryStats } from '@/types/history';
+import type { EditorHistory, DocumentState, HistoryStats, HistoryAction, HistoryEntry } from '@/types/history';
 
 export function createHistory(initialState: DocumentState, limit: number = 20): EditorHistory {
   return {
@@ -9,11 +9,21 @@ export function createHistory(initialState: DocumentState, limit: number = 20): 
   };
 }
 
-export function pushHistory(history: EditorHistory, newState: DocumentState): EditorHistory {
+export function pushHistoryWithAction(
+  history: EditorHistory, 
+  newState: DocumentState, 
+  action: HistoryAction
+): EditorHistory {
   const { past, present, limit } = history;
   
-  // Add current state to past
-  const newPast = [present, ...past];
+  // Create entry with current state and action
+  const newEntry: HistoryEntry = {
+    state: present,
+    action,
+  };
+  
+  // Add current entry to past
+  const newPast = [newEntry, ...past];
   
   // Limit the past array to the specified limit
   if (newPast.length > limit) {
@@ -23,9 +33,20 @@ export function pushHistory(history: EditorHistory, newState: DocumentState): Ed
   return {
     past: newPast,
     present: newState,
-    future: [], // Clear future when new action is performed
+    future: [],
     limit,
   };
+}
+
+// Keep backward compatibility
+export function pushHistory(history: EditorHistory, newState: DocumentState): EditorHistory {
+  const defaultAction: HistoryAction = {
+    type: 'unknown',
+    label: 'Unknown Action',
+    timestamp: Date.now(),
+  };
+  
+  return pushHistoryWithAction(history, newState, defaultAction);
 }
 
 export function undoHistory(history: EditorHistory): EditorHistory | null {
@@ -36,12 +57,22 @@ export function undoHistory(history: EditorHistory): EditorHistory | null {
     return null;
   }
   
-  const [previousState, ...restPast] = past;
+  const [previousEntry, ...restPast] = past;
+  
+  // Create entry for current state to add to future
+  const currentEntry: HistoryEntry = {
+    state: present,
+    action: {
+      type: 'redo',
+      label: 'Redo',
+      timestamp: Date.now(),
+    },
+  };
   
   return {
     past: restPast,
-    present: previousState,
-    future: [present, ...future],
+    present: previousEntry.state,
+    future: [currentEntry, ...future],
     limit: history.limit,
   };
 }
@@ -54,11 +85,21 @@ export function redoHistory(history: EditorHistory): EditorHistory | null {
     return null;
   }
   
-  const [nextState, ...restFuture] = future;
+  const [nextEntry, ...restFuture] = future;
+  
+  // Create entry for current state to add to past
+  const currentEntry: HistoryEntry = {
+    state: present,
+    action: {
+      type: 'undo',
+      label: 'Undo',
+      timestamp: Date.now(),
+    },
+  };
   
   return {
-    past: [present, ...past],
-    present: nextState,
+    past: [currentEntry, ...past],
+    present: nextEntry.state,
     future: restFuture,
     limit: history.limit,
   };
@@ -72,11 +113,21 @@ export function canRedo(history: EditorHistory): boolean {
   return history.future.length > 0;
 }
 
+export function getLastAction(history: EditorHistory): HistoryAction | undefined {
+  return history.past[0]?.action;
+}
+
+export function getNextAction(history: EditorHistory): HistoryAction | undefined {
+  return history.future[0]?.action;
+}
+
 export function getHistoryStats(history: EditorHistory): HistoryStats {
   return {
     pastCount: history.past.length,
     futureCount: history.future.length,
     canUndo: canUndo(history),
     canRedo: canRedo(history),
+    lastAction: getLastAction(history),
+    nextAction: getNextAction(history),
   };
 }

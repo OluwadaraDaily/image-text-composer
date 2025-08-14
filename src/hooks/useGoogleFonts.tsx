@@ -28,13 +28,10 @@ let allFontsCache: GoogleFont[] | null = null;
 
 const fetchAllGoogleFonts = async (): Promise<GoogleFont[]> => {
   if (allFontsCache) {
-    console.log('Using cached fonts:', allFontsCache.length);
     return allFontsCache;
   }
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_FONTS_API_KEY || process.env.GOOGLE_FONTS_API_KEY;
-  
-  console.log('API Key check:', apiKey ? 'API key found' : 'No API key');
   
   if (!apiKey) {
     throw new Error('Google Fonts API key is not configured');
@@ -60,16 +57,6 @@ const fetchPaginatedFonts = async ({ pageParam = 0 }): Promise<PaginatedFontsRes
   const startIndex = pageParam * pageSize;
   const endIndex = startIndex + pageSize;
   const fonts = allFonts.slice(startIndex, endIndex);
-  
-  console.log('fetchPaginatedFonts debug:', {
-    pageParam,
-    pageSize,
-    totalFonts: allFonts.length,
-    startIndex,
-    endIndex,
-    fontsInThisPage: fonts.length,
-    hasMore: endIndex < allFonts.length
-  });
   
   return {
     fonts,

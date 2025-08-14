@@ -23,16 +23,6 @@ export function ImageCanvas({
   maxCanvasWidth = 800,
   maxCanvasHeight = 600
 }: ImageCanvasProps) {
-  const { 
-    textLayers, 
-    selectedLayerId, 
-    setTextLayers, 
-    setSelectedLayerId, 
-    handleBringForward, 
-    handleBringBackward, 
-    handleBringToFront, 
-    handleBringToBack 
-  } = useTextLayers();
   const [imageObject, setImageObject] = useState<HTMLImageElement | null>(null);
   const [canvasMeta, setCanvasMeta] = useState<CanvasMeta>({
     width: 0,

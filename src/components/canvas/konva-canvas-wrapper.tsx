@@ -3,7 +3,7 @@ import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import type { CanvasMeta, TextLayer } from '@/types';
 import TextLayers from './text-layers';
 import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
-import { useTextLayers } from '@/contexts/text-layers-context';
+import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 
 
 interface KonvaCanvasWrapperProps {
@@ -23,8 +23,10 @@ export default function KonvaCanvasWrapper({
     handleBringForward, 
     handleBringBackward, 
     handleBringToFront, 
-    handleBringToBack 
-  } = useTextLayers();
+    handleBringToBack,
+    handleLayerUpdate,
+    handleDeleteLayer
+  } = useTextLayersWithHistory();
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
@@ -232,12 +234,8 @@ export default function KonvaCanvasWrapper({
     // Apply final clamping and update state
     const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
     
-    const updatedLayers = textLayers.map(l => 
-      l.id === layerId 
-        ? { ...l, x: clamped.x, y: clamped.y }
-        : l
-    );
-    setTextLayers(updatedLayers);
+    // Use handleLayerUpdate for history tracking
+    handleLayerUpdate(layerId, { x: clamped.x, y: clamped.y });
   };
 
   // Resize handle event handlers
@@ -257,52 +255,45 @@ export default function KonvaCanvasWrapper({
     const newWidth = Math.max(20, e.target.x() - layer.x);
     const newHeight = Math.max(15, e.target.y() - layer.y);
     
-    if (setTextLayers) {
-      let updatedWidth = newWidth;
-      let updatedHeight = newHeight;
-      let updatedFontSize = layer.fontSize;
-      let updatedX = layer.x;
-      let updatedY = layer.y;
-      
-      // Proportional resize with Shift key
-      if (modifierKeys.shift) {
-        const aspectRatio = layer.width / layer.height;
-        updatedHeight = newWidth / aspectRatio;
-      }
-      
-      // Center-scale with Alt key
-      if (modifierKeys.alt) {
-        const widthDelta = updatedWidth - layer.width;
-        const heightDelta = updatedHeight - layer.height;
-        updatedX = layer.x - widthDelta / 2;
-        updatedY = layer.y - heightDelta / 2;
-        
-        // Apply canvas bounds clamping for center-scale
-        const clamped = clampToCanvas(updatedX, updatedY, updatedWidth, updatedHeight);
-        updatedX = clamped.x;
-        updatedY = clamped.y;
-      }
-      
-      // Scale font size with resize (our decision from task 2)
-      const scaleX = updatedWidth / layer.width;
-      const scaleY = updatedHeight / layer.height;
-      const avgScale = (scaleX + scaleY) / 2;
-      updatedFontSize = Math.max(8, layer.fontSize * avgScale);
-      
-      const updatedLayers = textLayers.map(l => 
-        l.id === layer.id 
-          ? { 
-              ...l, 
-              x: updatedX,
-              y: updatedY,
-              width: updatedWidth, 
-              height: updatedHeight, 
-              fontSize: updatedFontSize 
-            }
-          : l
-      );
-      setTextLayers(updatedLayers);
+    let updatedWidth = newWidth;
+    let updatedHeight = newHeight;
+    let updatedFontSize = layer.fontSize;
+    let updatedX = layer.x;
+    let updatedY = layer.y;
+    
+    // Proportional resize with Shift key
+    if (modifierKeys.shift) {
+      const aspectRatio = layer.width / layer.height;
+      updatedHeight = newWidth / aspectRatio;
     }
+    
+    // Center-scale with Alt key
+    if (modifierKeys.alt) {
+      const widthDelta = updatedWidth - layer.width;
+      const heightDelta = updatedHeight - layer.height;
+      updatedX = layer.x - widthDelta / 2;
+      updatedY = layer.y - heightDelta / 2;
+      
+      // Apply canvas bounds clamping for center-scale
+      const clamped = clampToCanvas(updatedX, updatedY, updatedWidth, updatedHeight);
+      updatedX = clamped.x;
+      updatedY = clamped.y;
+    }
+    
+    // Scale font size with resize (our decision from task 2)
+    const scaleX = updatedWidth / layer.width;
+    const scaleY = updatedHeight / layer.height;
+    const avgScale = (scaleX + scaleY) / 2;
+    updatedFontSize = Math.max(8, layer.fontSize * avgScale);
+    
+    // Use handleLayerUpdate for history tracking
+    handleLayerUpdate(layer.id, {
+      x: updatedX,
+      y: updatedY,
+      width: updatedWidth, 
+      height: updatedHeight, 
+      fontSize: updatedFontSize 
+    });
   };
 
   const handleResizeDragEnd = () => setIsResizing(false);
@@ -332,27 +323,17 @@ export default function KonvaCanvasWrapper({
     // Apply angle snapping
     const snappedAngle = snapAngle(angle + 90); // +90 to align with visual expectation
     
-    if (setTextLayers) {
-      const updatedLayers = textLayers.map(l => 
-        l.id === layer.id 
-          ? { ...l, rotation: snappedAngle }
-          : l
-      );
-      setTextLayers(updatedLayers);
-    }
+    // Use handleLayerUpdate for history tracking
+    handleLayerUpdate(layer.id, { rotation: snappedAngle });
   };
 
   const handleRotationDragEnd = () => setIsRotating(false);
 
   // Text editing handlers
   const finishEditing = () => {
-    if (editingLayerId && setTextLayers) {
-      const updatedLayers = textLayers.map(layer => 
-        layer.id === editingLayerId 
-          ? { ...layer, text: editingText }
-          : layer
-      );
-      setTextLayers(updatedLayers);
+    if (editingLayerId) {
+      // Use handleLayerUpdate for history tracking
+      handleLayerUpdate(editingLayerId, { text: editingText });
     }
     setIsEditing(false);
     setEditingLayerId(null);
@@ -365,7 +346,6 @@ export default function KonvaCanvasWrapper({
     setIsEditing(false);
     setEditingLayerId(null);
     setEditingText('');
-    // Deselect the text when canceling editing to hide the selection box
     setSelectedLayerId(null);
   };
 
@@ -410,12 +390,8 @@ export default function KonvaCanvasWrapper({
       // Handle Backspace key (only when not editing)
       if (e.key === 'Backspace' && !isEditing && selectedLayerId) {
         e.preventDefault();
-        // Delete the selected layer
-        if (setTextLayers) {
-          const updatedLayers = textLayers.filter(l => l.id !== selectedLayerId);
-          setTextLayers(updatedLayers);
-          setSelectedLayerId(null);
-        }
+        // Delete the selected layer using history-aware function
+        handleDeleteLayer(selectedLayerId);
       }
       
       // Handle arrow key nudging
@@ -423,7 +399,7 @@ export default function KonvaCanvasWrapper({
         e.preventDefault();
         
         const layer = textLayers.find(l => l.id === selectedLayerId);
-        if (!layer || !setTextLayers) return;
+        if (!layer) return;
         
         const nudgeDistance = e.shiftKey ? 10 : 1;
         let deltaX = 0, deltaY = 0;
@@ -436,12 +412,9 @@ export default function KonvaCanvasWrapper({
         }
         
         const clamped = clampToCanvas(layer.x + deltaX, layer.y + deltaY, layer.width, layer.height);
-        const updatedLayers = textLayers.map(l => 
-          l.id === selectedLayerId 
-            ? { ...l, x: clamped.x, y: clamped.y }
-            : l
-        );
-        setTextLayers(updatedLayers);
+        
+        // Use handleLayerUpdate for history tracking
+        handleLayerUpdate(selectedLayerId, { x: clamped.x, y: clamped.y });
       }
       
       // Handle Tab navigation (only when not in text inputs and not editing)

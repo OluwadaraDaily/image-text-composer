@@ -7,10 +7,21 @@ type DocumentState = {
   layers: TextLayer[];
 };
 
+type HistoryAction = {
+  type: string;
+  label: string;
+  timestamp: number;
+};
+
+type HistoryEntry = {
+  state: DocumentState;
+  action: HistoryAction;
+};
+
 type EditorHistory = {
-  past: DocumentState[];
+  past: HistoryEntry[];
   present: DocumentState;
-  future: DocumentState[];
+  future: HistoryEntry[];
   limit: number;
 };
 
@@ -19,10 +30,14 @@ type HistoryStats = {
   futureCount: number;
   canUndo: boolean;
   canRedo: boolean;
+  lastAction?: HistoryAction;
+  nextAction?: HistoryAction;
 };
 
 export type {
   DocumentState,
+  HistoryAction,
+  HistoryEntry,
   EditorHistory,
   HistoryStats,
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, Rect, Group, Circle, Line } from 'react-konva';
 import type { TextLayer } from '@/types';
-import { useTextLayers } from '@/contexts/text-layers-context';
+import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 
 interface TextLayersProps {
   isEditing: boolean;
@@ -52,7 +52,7 @@ export default function TextLayers({
   onRotationDragMove,
   onRotationDragEnd
 }: TextLayersProps) {
-  const { textLayers, selectedLayerId } = useTextLayers();
+  const { textLayers, selectedLayerId } = useTextLayersWithHistory();
   
   // Sort layers by zIndex to ensure correct rendering order
   const sortedLayers = [...textLayers].sort((a, b) => a.zIndex - b.zIndex);

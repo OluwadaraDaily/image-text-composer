@@ -3,11 +3,11 @@ import type { TextLayer } from './layers';
 import type { EditorHistory } from './history';
 
 type EditorState = {
-  canvas: CanvasMeta;           // Info about the canvas
-  image: ImageAsset | null;     // The background image (if any)
-  layers: TextLayer[];          // All text layers
-  selectedLayerId: string | null; // Which layer is currently selected
-  history: EditorHistory;       // Undo/redo tracking
+  canvas: CanvasMeta;       
+  image: ImageAsset | null;
+  layers: TextLayer[]; 
+  selectedLayerId: string | null;
+  history: EditorHistory;
   ui: EditorUIState;            // Ephemeral UI state (e.g., tool panels)
 };
 

@@ -4,7 +4,7 @@ import { TextToolbar } from '@/components/text-toolbar';
 import type { ImageAsset, CanvasMeta } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { TextLayersProvider, useTextLayers } from '@/contexts/text-layers-context';
+import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 
 interface ImageEditorProps {
   image: ImageAsset;
@@ -23,7 +23,7 @@ function ImageEditorContent({
     textLayers, 
     selectedLayerId, 
     handleAddText,
-  } = useTextLayers();
+  } = useTextLayersWithHistory();
 
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -101,9 +101,5 @@ function ImageEditorContent({
 }
 
 export function ImageEditor(props: ImageEditorProps) {
-  return (
-    <TextLayersProvider>
-      <ImageEditorContent {...props} />
-    </TextLayersProvider>
-  );
+  return <ImageEditorContent {...props} />;
 }

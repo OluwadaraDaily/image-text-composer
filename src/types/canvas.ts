@@ -1,8 +1,8 @@
 type CanvasMeta = {
-  width: number;       // Display width of the canvas in px
-  height: number;      // Display height in px
-  scale: number;       // Zoom factor
-  rotation: number;    // If the entire canvas can be rotated (usually 0)
+  width: number;
+  height: number;
+  scale: number;
+  rotation: number;
 };
 
 type ImageAsset = {

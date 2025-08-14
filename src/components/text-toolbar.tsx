@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { useTextLayers } from '@/contexts/text-layers-context';
+import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 import { Type } from 'lucide-react';
 import { useGoogleFonts, useInfiniteGoogleFonts } from '@/hooks/useGoogleFonts';
 import { FontFamilySelector } from '@/components/text-controls/font-family-selector';
@@ -17,7 +15,7 @@ import { OpacitySlider } from '@/components/text-controls/opacity-slider';
 
 
 export function TextToolbar() {
-  const { textLayers, selectedLayerId, handleLayerUpdate } = useTextLayers();
+  const { textLayers, selectedLayerId, handleLayerUpdate } = useTextLayersWithHistory();
   const { data: googleFonts, isLoading: fontsLoading } = useGoogleFonts();
   const { 
     data: infiniteFonts, 
@@ -26,11 +24,6 @@ export function TextToolbar() {
     isFetchingNextPage,
     error: infiniteError
   } = useInfiniteGoogleFonts();
-
-  console.log("infiniteFonts =>", infiniteFonts)
-  console.log("hasNextPage =>", hasNextPage)
-  console.log("isFetchingNextPage =>", isFetchingNextPage)
-  console.log("infiniteError =>", infiniteError)
   
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['Arial']));
   const [fontLoadingStates, setFontLoadingStates] = useState<Set<string>>(new Set());
