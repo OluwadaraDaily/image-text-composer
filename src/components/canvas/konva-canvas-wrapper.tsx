@@ -4,6 +4,7 @@ import type { CanvasMeta, TextLayer } from '@/types';
 import TextLayers from './text-layers';
 import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
 import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 
 interface KonvaCanvasWrapperProps {
@@ -28,7 +29,6 @@ export default function KonvaCanvasWrapper({
     handleDeleteLayer
   } = useTextLayersWithHistory();
   const stageRef = useRef<any>(null);
-  const transformerRef = useRef<any>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const dragAnimationRef = useRef<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -356,6 +356,21 @@ export default function KonvaCanvasWrapper({
     }
   };
 
+  // Use consolidated keyboard shortcuts
+  useKeyboardShortcuts({
+    selectedLayerId,
+    textLayers,
+    onDeleteLayer: handleDeleteLayer,
+    onLayerUpdate: handleLayerUpdate,
+    onSetSelectedLayerId: setSelectedLayerId,
+    onCycleLayers: cycleThroughLayers,
+    isEditing,
+    onCancelEditing: cancelEditing,
+    onFinishEditing: finishEditing,
+    onModifierKeysChange: setModifierKeys,
+    canvasMeta
+  });
+
   useEffect(() => {
     if (isEditing && textInputRef.current) {
       textInputRef.current.focus();
@@ -363,95 +378,6 @@ export default function KonvaCanvasWrapper({
     }
   }, [isEditing]);
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Track modifier keys
-      setModifierKeys(prev => ({
-        ...prev,
-        shift: e.shiftKey,
-        alt: e.altKey
-      }));
-      
-      // Check if we're in a text input/textarea to avoid interfering with typing
-      const activeElement = document.activeElement;
-      const isInTextInput = activeElement?.tagName === 'INPUT' || 
-                           activeElement?.tagName === 'TEXTAREA' || 
-                           (activeElement as HTMLElement)?.isContentEditable === true;
-      
-      // Handle Escape key
-      if (e.key === 'Escape') {
-        if (isEditing) {
-          cancelEditing();
-        } else if (selectedLayerId) {
-          setSelectedLayerId(null);
-        }
-      }
-      
-      // Handle Backspace key (only when not editing)
-      if (e.key === 'Backspace' && !isEditing && selectedLayerId) {
-        e.preventDefault();
-        // Delete the selected layer using history-aware function
-        handleDeleteLayer(selectedLayerId);
-      }
-      
-      // Handle arrow key nudging
-      if (!isInTextInput && !isEditing && selectedLayerId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-        
-        const layer = textLayers.find(l => l.id === selectedLayerId);
-        if (!layer) return;
-        
-        const nudgeDistance = e.shiftKey ? 10 : 1;
-        let deltaX = 0, deltaY = 0;
-        
-        switch (e.key) {
-          case 'ArrowLeft': deltaX = -nudgeDistance; break;
-          case 'ArrowRight': deltaX = nudgeDistance; break;
-          case 'ArrowUp': deltaY = -nudgeDistance; break;
-          case 'ArrowDown': deltaY = nudgeDistance; break;
-        }
-        
-        const clamped = clampToCanvas(layer.x + deltaX, layer.y + deltaY, layer.width, layer.height);
-        
-        // Use handleLayerUpdate for history tracking
-        handleLayerUpdate(selectedLayerId, { x: clamped.x, y: clamped.y });
-      }
-      
-      // Handle Tab navigation (only when not in text inputs and not editing)
-      if (e.key === 'Tab' && !isInTextInput && !isEditing) {
-        e.preventDefault(); // Prevent default tab behavior
-        
-        if (e.shiftKey) {
-          // Shift+Tab: cycle backward
-          cycleThroughLayers('backward');
-        } else {
-          // Tab: cycle forward
-          cycleThroughLayers('forward');
-        }
-      }
-    };
-
-    const handleGlobalKeyUp = (e: KeyboardEvent) => {
-      // Update modifier keys on release
-      setModifierKeys(prev => ({
-        ...prev,
-        shift: e.shiftKey,
-        alt: e.altKey
-      }));
-    };
-
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    document.addEventListener('keyup', handleGlobalKeyUp);
-    
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-      document.removeEventListener('keyup', handleGlobalKeyUp);
-      
-      if (dragAnimationRef.current) {
-        cancelAnimationFrame(dragAnimationRef.current);
-      }
-    };
-  }, [isEditing, selectedLayerId, cycleThroughLayers, textLayers, setTextLayers, setSelectedLayerId]);
 
 
   const editingLayer = editingLayerId ? textLayers.find(l => l.id === editingLayerId) : null;

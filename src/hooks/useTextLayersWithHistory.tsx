@@ -26,7 +26,6 @@ export function useTextLayersWithHistory() {
   // Sync textLayers with history state when undo/redo happens
   useEffect(() => {
     const historyLayers = currentState.layers || [];
-    // Simple sync - update textLayers to match history
     setTextLayers(historyLayers);
   }, [currentState.layers, setTextLayers]);
 

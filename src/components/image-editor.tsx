@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import React from 'react';
 import { ImageCanvas } from '@/components/canvas/image-canvas';
 import { TextToolbar } from '@/components/text-toolbar';
 import type { ImageAsset, CanvasMeta } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface ImageEditorProps {
   image: ImageAsset;
@@ -25,32 +26,11 @@ function ImageEditorContent({
     handleAddText,
   } = useTextLayersWithHistory();
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (event: KeyboardEvent) => {
-      
-      // Check if we're in a text input/textarea to avoid interfering with typing
-      const activeElement = document.activeElement;
-      const isInTextInput = activeElement?.tagName === 'INPUT' || 
-                           activeElement?.tagName === 'TEXTAREA' || 
-                           (activeElement as HTMLElement)?.isContentEditable === true;
-      
-      if (isInTextInput) return;
-      
-      if ((event.key === 't' || event.key === 'T') && !event.ctrlKey && !event.metaKey) {
-        event.preventDefault();
-        if (canvasMeta) handleAddText(canvasMeta);
-      } else if ((event.key === 't' || event.key === 'T') && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        if (canvasMeta) handleAddText(canvasMeta);
-      }
-    };
-
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    
-    return () => {
-      document.removeEventListener('keydown', handleGlobalKeyDown);
-    };
-  }, [handleAddText, canvasMeta]);
+  // Use consolidated keyboard shortcuts
+  useKeyboardShortcuts({
+    onAddText: handleAddText,
+    canvasMeta
+  });
 
   return (
     <div className="flex h-screen">
