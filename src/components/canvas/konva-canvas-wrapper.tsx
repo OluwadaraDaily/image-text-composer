@@ -5,6 +5,7 @@ import TextLayers from './text-layers';
 import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
 import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useEditorHistory } from '@/contexts/editor-history-context';
 
 
 interface KonvaCanvasWrapperProps {
@@ -29,6 +30,7 @@ export default function KonvaCanvasWrapper({
     handleDeleteLayer
   } = useTextLayersWithHistory();
   const stageRef = useRef<any>(null);
+  const { setStageRef } = useEditorHistory();
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const dragAnimationRef = useRef<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -377,6 +379,13 @@ export default function KonvaCanvasWrapper({
       textInputRef.current.select();
     }
   }, [isEditing]);
+
+  // Set up export functionality
+  useEffect(() => {
+    if (stageRef.current) {
+      setStageRef(stageRef.current);
+    }
+  }, [setStageRef]);
 
 
 

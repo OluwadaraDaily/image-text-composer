@@ -8,16 +8,15 @@ import type { ReactNode } from 'react';
 interface EditorLayoutProps {
   children: ReactNode;
   onReset?: () => void;
-  onExport?: () => void;
 }
 
-function EditorLayoutContent({ children, onReset, onExport }: EditorLayoutProps) {
+function EditorLayoutContent({ children, onReset }: EditorLayoutProps) {
   // Initialize keyboard shortcuts
   useKeyboardShortcuts();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <EditorHeader onReset={onReset} onExport={onExport} />
+      <EditorHeader onReset={onReset} />
       <div className="flex-1">
         {children}
       </div>
@@ -25,10 +24,10 @@ function EditorLayoutContent({ children, onReset, onExport }: EditorLayoutProps)
   );
 }
 
-export function EditorLayout({ children, onReset, onExport }: EditorLayoutProps) {
+export function EditorLayout({ children, onReset }: EditorLayoutProps) {
   return (
     <TextLayersProvider>
-      <EditorLayoutContent onReset={onReset} onExport={onExport}>
+      <EditorLayoutContent onReset={onReset}>
         {children}
       </EditorLayoutContent>
     </TextLayersProvider>

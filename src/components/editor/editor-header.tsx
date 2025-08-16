@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Download, RotateCcw } from 'lucide-react';
 import { useEditorHistory } from '@/contexts/editor-history-context';
 import { HistoryControls } from '@/components/history/history-controls';
+import { AutosaveIndicator } from '@/components/ui/autosave-indicator';
 
 interface EditorHeaderProps {
   onReset?: () => void;
-  onExport?: () => void;
 }
 
-export function EditorHeader({ onReset, onExport }: EditorHeaderProps) {
-  const { historyStats, handleUndo, handleRedo } = useEditorHistory();
+export function EditorHeader({ onReset }: EditorHeaderProps) {
+  const { historyStats, handleUndo, handleRedo, exportCanvas } = useEditorHistory();
 
   return (
     <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
@@ -24,9 +24,10 @@ export function EditorHeader({ onReset, onExport }: EditorHeaderProps) {
         />
       </div>
 
-      {/* Center - App title */}
-      <div className="flex-1 text-center">
+      {/* Center - App title and autosave indicator */}
+      <div className="flex-1 flex items-center justify-center gap-4">
         <h1 className="text-lg font-semibold text-gray-900">Image Text Composer</h1>
+        <AutosaveIndicator />
       </div>
 
       {/* Right side - Action buttons */}
@@ -45,8 +46,7 @@ export function EditorHeader({ onReset, onExport }: EditorHeaderProps) {
           variant="default" 
           size="sm"
           title="Export PNG"
-          onClick={onExport}
-          disabled={!onExport}
+          onClick={exportCanvas}
         >
           <Download className="h-4 w-4 mr-1" />
           Export
