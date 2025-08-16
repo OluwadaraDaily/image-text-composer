@@ -66,17 +66,24 @@ export function useTextLayersWithHistory() {
     // Create the new layer manually to ensure we have it for history
     // Use a more unique ID to avoid collisions
     const newLayerId = `text-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    
+    // Calculate initial dimensions based on font size
+    const fontSize = 18;
+    const initialText = 'New Text';
+    const estimatedWidth = Math.max(initialText.length * fontSize * 0.6, 80); // Rough estimate
+    const estimatedHeight = fontSize * 1.4; // Account for line height
+    
     const newLayer: TextLayer = {
       id: newLayerId,
-      text: 'New Text',
-      x: canvasMeta.width / 2 - 50,
-      y: canvasMeta.height / 2 - 12,
+      text: initialText,
+      x: canvasMeta.width / 2 - estimatedWidth / 2, // Center horizontally
+      y: canvasMeta.height / 2 - estimatedHeight / 2, // Center vertically
       rotation: 0,
-      width: 100,
-      height: 24,
+      width: estimatedWidth,
+      height: estimatedHeight,
       fontFamily: 'Arial',
       fontWeight: 400,
-      fontSize: 18,
+      fontSize: fontSize,
       color: { r: 0, g: 0, b: 0, a: 1 },
       opacity: 1,
       alignment: 'center',

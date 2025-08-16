@@ -19,7 +19,7 @@ interface TextLayersProps {
   onResizeMouseEnter: (e: any) => void;
   onResizeMouseLeave: (e: any) => void;
   onResizeDragStart: () => void;
-  onResizeDragMove: (layer: TextLayer, e: any) => void;
+  onResizeDragMove: (layer: TextLayer, e: any, handleType: string) => void;
   onResizeDragEnd: () => void;
   onRotationMouseEnter: (e: any) => void;
   onRotationMouseLeave: (e: any) => void;
@@ -87,14 +87,14 @@ export default function TextLayers({
               </Group>
             )}
             
-            {/* Text element */}
+            {/* Text element with improved multi-line support */}
             <Text
               x={layer.x}
               y={layer.y}
               text={layer.text}
               fontSize={layer.fontSize}
               fontFamily={layer.fontFamily}
-              fontVariant={`${layer.fontWeight}`}
+              fontStyle={layer.fontWeight >= 600 ? 'bold' : 'normal'}
               fill={`rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`}
               align={layer.alignment}
               width={layer.width}
@@ -111,6 +111,10 @@ export default function TextLayers({
               onMouseEnter={onTextMouseEnter}
               onMouseLeave={onTextMouseLeave}
               visible={!isEditingThis}
+              wrap="word"
+              ellipsis={false}
+              lineHeight={1.2}
+              verticalAlign="top"
             />
             
             {/* Transform handles for selected layer */}
@@ -120,8 +124,10 @@ export default function TextLayers({
                 y={layer.y + layer.height / 2}
                 rotation={layer.rotation}
               >
-                {/* Resize handles */}
+                {/* Corner resize handles (diagonal scaling) */}
+                {/* Bottom-right corner */}
                 <Circle
+                  name="corner-br"
                   x={layer.width / 2}
                   y={layer.height / 2}
                   radius={6}
@@ -132,17 +138,141 @@ export default function TextLayers({
                   onMouseEnter={onResizeMouseEnter}
                   onMouseLeave={onResizeMouseLeave}
                   onDragStart={onResizeDragStart}
-                  onDragMove={(e) => onResizeDragMove(layer, e)}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'corner-br')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Top-left corner */}
+                <Circle
+                  name="corner-tl"
+                  x={-layer.width / 2}
+                  y={-layer.height / 2}
+                  radius={6}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'corner-tl')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Top-right corner */}
+                <Circle
+                  name="corner-tr"
+                  x={layer.width / 2}
+                  y={-layer.height / 2}
+                  radius={6}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'corner-tr')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Bottom-left corner */}
+                <Circle
+                  name="corner-bl"
+                  x={-layer.width / 2}
+                  y={layer.height / 2}
+                  radius={6}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'corner-bl')}
+                  onDragEnd={onResizeDragEnd}
+                />
+
+                {/* Side resize handles (width/height only) */}
+                {/* Right side */}
+                <Rect
+                  name="side-right"
+                  x={layer.width / 2 - 2}
+                  y={-3}
+                  width={4}
+                  height={6}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'side-right')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Left side */}
+                <Rect
+                  name="side-left"
+                  x={-layer.width / 2 - 2}
+                  y={-3}
+                  width={4}
+                  height={6}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'side-left')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Top side */}
+                <Rect
+                  name="side-top"
+                  x={-3}
+                  y={-layer.height / 2 - 2}
+                  width={6}
+                  height={4}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'side-top')}
+                  onDragEnd={onResizeDragEnd}
+                />
+                
+                {/* Bottom side */}
+                <Rect
+                  name="side-bottom"
+                  x={-3}
+                  y={layer.height / 2 - 2}
+                  width={6}
+                  height={4}
+                  fill="white"
+                  stroke="#007bff"
+                  strokeWidth={2}
+                  draggable
+                  onMouseEnter={onResizeMouseEnter}
+                  onMouseLeave={onResizeMouseLeave}
+                  onDragStart={onResizeDragStart}
+                  onDragMove={(e) => onResizeDragMove(layer, e, 'side-bottom')}
                   onDragEnd={onResizeDragEnd}
                 />
                 
                 {/* Rotation handle */}
                 <Circle
                   x={0}
-                  y={-layer.height / 2 - 20}
+                  y={-layer.height / 2 - 25}
                   radius={6}
                   fill="white"
-                  stroke="#007bff"
+                  stroke="#28a745"
                   strokeWidth={2}
                   draggable
                   onMouseEnter={onRotationMouseEnter}
@@ -156,9 +286,9 @@ export default function TextLayers({
                 <Line
                   points={[
                     0, -layer.height / 2,
-                    0, -layer.height / 2 - 20
+                    0, -layer.height / 2 - 25
                   ]}
-                  stroke="#007bff"
+                  stroke="#28a745"
                   strokeWidth={1}
                   opacity={0.5}
                   listening={false}
