@@ -73,34 +73,26 @@ export default function TextLayers({
                 rotation={layer.rotation}
               >
                 <Rect
-                  x={-layer.width / 2 - 4}
-                  y={-layer.height / 2 - 6}
-                  width={layer.width + 8}
-                  height={layer.height + 8}
+                  x={-layer.width / 2 - 2}
+                  y={-layer.height / 2 - 2}
+                  width={layer.width + 4}
+                  height={layer.height + 4}
                   fill="transparent"
-                  stroke="#000000"
+                  stroke="#007bff"
                   strokeWidth={1}
-                  opacity={0.7}
-                  cornerRadius={4}
+                  opacity={0.8}
+                  cornerRadius={2}
                   listening={false}
+                  dash={[4, 4]}
                 />
               </Group>
             )}
             
             {/* Text element with improved multi-line support */}
-            <Text
-              x={layer.x}
-              y={layer.y}
-              text={layer.text}
-              fontSize={layer.fontSize}
-              fontFamily={layer.fontFamily}
-              fontStyle={layer.fontWeight >= 600 ? 'bold' : 'normal'}
-              fill={`rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`}
-              align={layer.alignment}
-              width={layer.width}
-              height={layer.height}
+            <Group
+              x={layer.x + layer.width / 2}
+              y={layer.y + layer.height / 2}
               rotation={layer.rotation}
-              opacity={layer.opacity}
               draggable={!isEditingThis}
               onClick={(e) => onTextClick(layer.id, e)}
               onContextMenu={onTextRightClick ? (e) => onTextRightClick(layer.id, e) : undefined}
@@ -111,11 +103,36 @@ export default function TextLayers({
               onMouseEnter={onTextMouseEnter}
               onMouseLeave={onTextMouseLeave}
               visible={!isEditingThis}
-              wrap="word"
-              ellipsis={false}
-              lineHeight={1.2}
-              verticalAlign="top"
-            />
+            >
+              {/* Invisible background rect for better click detection */}
+              <Rect
+                x={-layer.width / 2}
+                y={-layer.height / 2}
+                width={layer.width}
+                height={layer.height}
+                fill="transparent"
+                listening={true}
+              />
+              
+              <Text
+                x={-layer.width / 2}
+                y={-layer.height / 2}
+                text={layer.text}
+                fontSize={layer.fontSize}
+                fontFamily={layer.fontFamily}
+                fontStyle={layer.fontWeight >= 600 ? 'bold' : 'normal'}
+                fill={`rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`}
+                align={layer.alignment}
+                width={layer.width}
+                height={layer.height}
+                opacity={layer.opacity}
+                wrap="word"
+                ellipsis={false}
+                lineHeight={1.2}
+                verticalAlign="top"
+                listening={true}
+              />
+            </Group>
             
             {/* Transform handles for selected layer */}
             {isSelected && !isEditingThis && !isDragging && (
