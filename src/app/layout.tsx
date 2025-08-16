@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ScreenSizeGuard } from "@/components/screen-size-guard";
+import { HelpButton } from "@/components/help-button";
 
 export const metadata: Metadata = {
   title: "Image Text Composer",
@@ -21,6 +22,7 @@ export default function RootLayout({
           <ScreenSizeGuard>
             {children}
           </ScreenSizeGuard>
+          <HelpButton />
           <Toaster position="top-right" richColors />
         </QueryProvider>
       </body>
