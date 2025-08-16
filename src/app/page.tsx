@@ -4,21 +4,22 @@ import { EmptyState } from '@/components/empty-state';
 import { ImageEditor } from '@/components/image-editor';
 import { EditorLayout } from '@/components/editor/editor-layout';
 import { EditorHistoryProvider } from '@/contexts/editor-history-context';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { processImageFile, cleanupImageUrl } from '@/lib/image-utils';
 import { useEditorHistory } from '@/contexts/editor-history-context';
-import type { ImageAsset, CanvasMeta } from '@/types';
+import type { CanvasMeta } from '@/types';
 import { toast } from 'sonner';
 import { createHistoryAction, getActionLabel, HISTORY_ACTION_TYPES } from '@/constants/history-actions';
 
 function AppContent() {
   const [canvasMeta, setCanvasMeta] = useState<CanvasMeta | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const EMPTY_HISTORY_STATE = {
+  
+  const EMPTY_HISTORY_STATE = useMemo(() => ({
     canvas: { width: 800, height: 600, scale: 1, rotation: 0 },
     image: null,
     layers: [],
-  }
+  }), []);
   
   // Get the current history state to determine what to show
   const { currentState, pushHistoryAction } = useEditorHistory();
@@ -113,7 +114,7 @@ function AppContent() {
     
     pushHistoryAction(newState, action);
     setCanvasMeta(null);
-  }, [currentState.image, pushHistoryAction]);
+  }, [currentState.image, pushHistoryAction, EMPTY_HISTORY_STATE]);
 
   const handleError = useCallback((error: string) => {
     toast.error(`Image upload error: ${error}`)

@@ -146,7 +146,7 @@ export function MultiLineTextEditor({
           fontSize: `${layer.fontSize}px`,
           fontFamily: layer.fontFamily,
           fontWeight: fontWeightStyle,
-          textAlign: layer.alignment as any,
+          textAlign: layer.alignment as React.CSSProperties['textAlign'],
           color: `rgba(${layer.color.r}, ${layer.color.g}, ${layer.color.b}, ${layer.color.a})`,
           opacity: layer.opacity,
           zIndex: 1000,

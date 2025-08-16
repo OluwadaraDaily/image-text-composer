@@ -18,7 +18,6 @@ export function useTextLayersWithHistory() {
     handleBringBackward: originalBringBackward,
     handleBringToFront: originalBringToFront,
     handleBringToBack: originalBringToBack,
-    handleAddText: originalAddText,
     handleLayerUpdate: originalLayerUpdate,
     setTextLayers,
   } = textLayersContext;

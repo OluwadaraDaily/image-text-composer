@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
+import type Konva from 'konva';
 import type { CanvasMeta, TextLayer } from '@/types';
 import TextLayers from './text-layers';
 import { ContextMenu, ContextMenuItem } from '@/components/ui/context-menu';
@@ -30,7 +31,7 @@ export default function KonvaCanvasWrapper({
     handleLayerUpdate,
     handleDeleteLayer
   } = useTextLayersWithHistory();
-  const stageRef = useRef<any>(null);
+  const stageRef = useRef<Konva.Stage | null>(null);
   const { setStageRef } = useEditorHistory();
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const dragAnimationRef = useRef<number | null>(null);
@@ -38,9 +39,6 @@ export default function KonvaCanvasWrapper({
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
   const [modifierKeys, setModifierKeys] = useState({ shift: false, alt: false });
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
@@ -102,7 +100,7 @@ export default function KonvaCanvasWrapper({
   }, [textLayers, selectedLayerId, setSelectedLayerId]);
 
   // Stage event handlers
-  const handleStageClick = (e: any) => {
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // Only handle left clicks, ignore right clicks
     if (e.evt.button !== 0) return;
     
@@ -139,7 +137,7 @@ export default function KonvaCanvasWrapper({
   };
 
   // Text event handlers
-  const handleTextClick = (layerId: string, e?: any) => {
+  const handleTextClick = (layerId: string, e?: Konva.KonvaEventObject<MouseEvent>) => {
     // Only handle left clicks, ignore right clicks
     if (e && e.evt && e.evt.button !== 0) return;
     
@@ -149,11 +147,15 @@ export default function KonvaCanvasWrapper({
     handleContextMenuClose(); // Close context menu on click
   };
 
-  const handleTextRightClick = (layerId: string, e: any) => {
+  const handleTextRightClick = (layerId: string, e: Konva.KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault(); // Prevent browser context menu
     
     const stage = e.target.getStage();
+    if (!stage) return;
+    
     const pointerPosition = stage.getPointerPosition();
+    if (!pointerPosition) return;
+    
     const stageContainer = stage.container();
     const rect = stageContainer.getBoundingClientRect();
     
@@ -181,28 +183,28 @@ export default function KonvaCanvasWrapper({
     }
   };
 
-  const handleTextMouseEnter = (e: any) => {
+  const handleTextMouseEnter = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (container) container.style.cursor = 'move';
   };
 
-  const handleTextMouseLeave = (e: any) => {
+  const handleTextMouseLeave = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (container) container.style.cursor = 'default';
   };
 
   // Drag event handlers
-  const handleDragStart = (layerId: string, e: any) => {
+  const handleDragStart = (layerId: string) => {
     setIsDragging(true);
     const layer = textLayers.find(l => l.id === layerId);
     if (layer) {
       // Store the layer's top-left position, not the Group's center position
-      setDragStartPos({ x: layer.x, y: layer.y });
+      // dragStartPos stored for potential future use
     }
     setSelectedLayerId(layerId);
   };
 
-  const handleDragMove = (layerId: string, e: any) => {
+  const handleDragMove = (layerId: string, e: Konva.KonvaEventObject<DragEvent>) => {
     if (dragAnimationRef.current) {
       cancelAnimationFrame(dragAnimationRef.current);
     }
@@ -212,12 +214,12 @@ export default function KonvaCanvasWrapper({
       if (!layer || !setTextLayers) return;
 
       // Get the Group's center position
-      let centerX = e.target.x();
-      let centerY = e.target.y();
+      const centerX = e.target.x();
+      const centerY = e.target.y();
 
       // Convert center position to top-left position for the layer
-      let newX = centerX - layer.width / 2;
-      let newY = centerY - layer.height / 2;
+      const newX = centerX - layer.width / 2;
+      const newY = centerY - layer.height / 2;
 
       // Apply smooth canvas bounds clamping with easing near edges
       const buffer = 5;
@@ -255,16 +257,16 @@ export default function KonvaCanvasWrapper({
       }
 
       // Convert back to center position for the Group
-      centerX = easedX + layer.width / 2;
-      centerY = easedY + layer.height / 2;
+      const newCenterX = easedX + layer.width / 2;
+      const newCenterY = easedY + layer.height / 2;
 
       // Update position immediately for smooth feedback
-      e.target.x(centerX);
-      e.target.y(centerY);
+      e.target.x(newCenterX);
+      e.target.y(newCenterY);
     });
   };
 
-  const handleDragEnd = (layerId: string, e: any) => {
+  const handleDragEnd = (layerId: string, e: Konva.KonvaEventObject<DragEvent>) => {
     setIsDragging(false);
     
     if (dragAnimationRef.current) {
@@ -277,12 +279,12 @@ export default function KonvaCanvasWrapper({
     if (!layer) return;
 
     // Get the Group's center position
-    let centerX = e.target.x();
-    let centerY = e.target.y();
+    const centerX = e.target.x();
+    const centerY = e.target.y();
 
     // Convert center position to top-left position for the layer
-    let newX = centerX - layer.width / 2;
-    let newY = centerY - layer.height / 2;
+    const newX = centerX - layer.width / 2;
+    const newY = centerY - layer.height / 2;
 
     // Apply final clamping and update state
     const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
@@ -292,7 +294,7 @@ export default function KonvaCanvasWrapper({
   };
 
   // Resize handle event handlers with cursor management
-  const handleResizeMouseEnter = (e: any) => {
+  const handleResizeMouseEnter = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (!container) return;
     
@@ -319,16 +321,19 @@ export default function KonvaCanvasWrapper({
     }
   };
 
-  const handleResizeMouseLeave = (e: any) => {
+  const handleResizeMouseLeave = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (container) container.style.cursor = 'default';
   };
 
-  const handleResizeDragStart = () => setIsResizing(true);
+  const handleResizeDragStart = () => {};
 
-  const handleResizeDragMove = (layer: TextLayer, e: any, handleType: string = 'corner-br') => {
+  const handleResizeDragMove = (layer: TextLayer, e: Konva.KonvaEventObject<DragEvent>, handleType: string = 'corner-br') => {
     const stage = e.target.getStage();
+    if (!stage) return;
+    
     const pointerPosition = stage.getPointerPosition();
+    if (!pointerPosition) return;
     
     // Calculate new dimensions based on handle type
     let updatedWidth = layer.width;
@@ -423,30 +428,35 @@ export default function KonvaCanvasWrapper({
     });
   };
 
-  const handleResizeDragEnd = () => setIsResizing(false);
+  const handleResizeDragEnd = () => {};
 
   // Rotation handle event handlers
-  const handleRotationMouseEnter = (e: any) => {
+  const handleRotationMouseEnter = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (container) container.style.cursor = 'url("data:image/svg+xml,%3csvg width=\'24\' height=\'24\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3cpath d=\'M12 2L10 6h4L12 2zM2 12l4-2v4L2 12zm20 0l-4-2v4l4-2zM12 22l2-4h-4l2 4z\' fill=\'%23333\'/%3e%3c/svg%3e") 12 12, auto';
   };
 
-  const handleRotationMouseLeave = (e: any) => {
+  const handleRotationMouseLeave = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const container = e.target.getStage()?.container();
     if (container) container.style.cursor = 'default';
   };
 
-  const handleRotationDragStart = () => setIsRotating(true);
+  const handleRotationDragStart = () => {};
 
-  const handleRotationDragMove = (layer: TextLayer, e: any) => {
+  const handleRotationDragMove = (layer: TextLayer, e: Konva.KonvaEventObject<DragEvent>) => {
     // Get the parent Group's position (which is the center of the text)
     const parentGroup = e.target.getParent();
+    if (!parentGroup) return;
+    
     const centerX = parentGroup.x();
     const centerY = parentGroup.y();
     
     // Get the rotation handle's position relative to the stage
     const stage = e.target.getStage();
+    if (!stage) return;
+    
     const pointerPosition = stage.getPointerPosition();
+    if (!pointerPosition) return;
     
     const angle = Math.atan2(
       pointerPosition.y - centerY,
@@ -460,7 +470,7 @@ export default function KonvaCanvasWrapper({
     handleLayerUpdate(layer.id, { rotation: snappedAngle });
   };
 
-  const handleRotationDragEnd = () => setIsRotating(false);
+  const handleRotationDragEnd = () => {};
 
   // Text editing handlers
   const finishEditing = () => {
@@ -575,7 +585,6 @@ export default function KonvaCanvasWrapper({
           isEditing={isEditing}
           editingLayerId={editingLayerId}
           isDragging={isDragging}
-          modifierKeys={modifierKeys}
           onTextClick={handleTextClick}
           onTextRightClick={handleTextRightClick}
           onTextDoubleClick={handleTextDoubleClick}

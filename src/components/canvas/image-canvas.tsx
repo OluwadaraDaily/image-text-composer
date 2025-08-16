@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import type { ImageAsset, CanvasMeta } from '@/types';
 import { calculateDisplaySize } from '@/lib/image-utils';
 import { toast } from 'sonner';
-import { useTextLayers } from '@/contexts/text-layers-context';
 
 // Create a wrapper component that will be dynamically imported
 const KonvaCanvas = dynamic(() => import('./konva-canvas-wrapper'), { ssr: false });

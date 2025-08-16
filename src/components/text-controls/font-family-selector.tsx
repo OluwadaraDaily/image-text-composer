@@ -42,7 +42,7 @@ export function FontFamilySelector({
   useEffect(() => {
     if (!showDropdown) return;
 
-    const handleScroll = (e: Event) => {
+    const handleScroll = () => {
       if (!listRef.current) return;
       
       const { scrollTop, scrollHeight, clientHeight } = listRef.current;
@@ -60,9 +60,11 @@ export function FontFamilySelector({
       }
     }, 0);
     
+    const currentListRef = listRef.current;
+    
     return () => {
       clearTimeout(timeoutId);
-      const fontList = listRef.current;
+      const fontList = currentListRef;
       if (fontList) {
         fontList.removeEventListener('scroll', handleScroll);
       }

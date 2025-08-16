@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 import { Type } from 'lucide-react';
@@ -21,13 +21,11 @@ export function TextToolbar() {
     data: infiniteFonts, 
     fetchNextPage, 
     hasNextPage, 
-    isFetchingNextPage,
-    error: infiniteError
+    isFetchingNextPage
   } = useInfiniteGoogleFonts();
   
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['Arial']));
   const [fontLoadingStates, setFontLoadingStates] = useState<Set<string>>(new Set());
-  const [preloadedFonts, setPreloadedFonts] = useState<Set<string>>(new Set());
   
   const selectedLayer = textLayers.find(layer => layer.id === selectedLayerId) || null;
   
@@ -61,7 +59,7 @@ export function TextToolbar() {
     return weights.length > 0 ? weights : ['400'];
   }, [selectedFont?.variants]);
 
-  const loadGoogleFont = async (fontFamily: string, weights?: string[], isPreload = false) => {
+  const loadGoogleFont = useCallback(async (fontFamily: string, weights?: string[], isPreload = false) => {
     if (loadedFonts.has(fontFamily) || fontFamily === 'Arial') {
       return;
     }
@@ -100,9 +98,6 @@ export function TextToolbar() {
       });
       
       setLoadedFonts(prev => new Set([...prev, fontFamily]));
-      if (isPreload) {
-        setPreloadedFonts(prev => new Set([...prev, fontFamily]));
-      }
     } catch (error) {
       console.error('Failed to load font:', fontFamily, error);
     } finally {
@@ -114,7 +109,7 @@ export function TextToolbar() {
         });
       }
     }
-  };
+  }, [loadedFonts]);
 
   // Preload popular fonts when component mounts
   useEffect(() => {
@@ -127,7 +122,7 @@ export function TextToolbar() {
       }
     };
     preloadPopularFonts();
-  }, [availableFonts]);
+  }, [availableFonts, loadGoogleFont]);
 
 
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, Rect, Group, Circle, Line } from 'react-konva';
+import type Konva from 'konva';
 import type { TextLayer } from '@/types';
 import { useTextLayersWithHistory } from '@/hooks/useTextLayersWithHistory';
 
@@ -7,24 +8,23 @@ interface TextLayersProps {
   isEditing: boolean;
   editingLayerId: string | null;
   isDragging: boolean;
-  modifierKeys: { shift: boolean; alt: boolean };
-  onTextClick: (layerId: string, e?: any) => void;
-  onTextRightClick?: (layerId: string, e: any) => void;
+  onTextClick: (layerId: string, e?: Konva.KonvaEventObject<MouseEvent>) => void;
+  onTextRightClick?: (layerId: string, e: Konva.KonvaEventObject<PointerEvent>) => void;
   onTextDoubleClick: (layerId: string) => void;
-  onTextMouseEnter: (e: any) => void;
-  onTextMouseLeave: (e: any) => void;
-  onDragStart: (layerId: string, e: any) => void;
-  onDragMove: (layerId: string, e: any) => void;
-  onDragEnd: (layerId: string, e: any) => void;
-  onResizeMouseEnter: (e: any) => void;
-  onResizeMouseLeave: (e: any) => void;
+  onTextMouseEnter: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onTextMouseLeave: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onDragStart: (layerId: string, e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragMove: (layerId: string, e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd: (layerId: string, e: Konva.KonvaEventObject<DragEvent>) => void;
+  onResizeMouseEnter: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onResizeMouseLeave: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onResizeDragStart: () => void;
-  onResizeDragMove: (layer: TextLayer, e: any, handleType: string) => void;
+  onResizeDragMove: (layer: TextLayer, e: Konva.KonvaEventObject<DragEvent>, handleType: string) => void;
   onResizeDragEnd: () => void;
-  onRotationMouseEnter: (e: any) => void;
-  onRotationMouseLeave: (e: any) => void;
+  onRotationMouseEnter: (e: Konva.KonvaEventObject<MouseEvent>) => void;
+  onRotationMouseLeave: (e: Konva.KonvaEventObject<MouseEvent>) => void;
   onRotationDragStart: () => void;
-  onRotationDragMove: (layer: TextLayer, e: any) => void;
+  onRotationDragMove: (layer: TextLayer, e: Konva.KonvaEventObject<DragEvent>) => void;
   onRotationDragEnd: () => void;
 }
 
@@ -32,7 +32,6 @@ export default function TextLayers({
   isEditing,
   editingLayerId,
   isDragging,
-  modifierKeys,
   onTextClick,
   onTextRightClick,
   onTextDoubleClick,
