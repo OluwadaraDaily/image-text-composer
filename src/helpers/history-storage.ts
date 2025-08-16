@@ -10,33 +10,15 @@ const processImagesForStorage = async (state: DocumentState): Promise<DocumentSt
     return state;
   }
 
-  if (state.image.imageId) {
+  // If image already has an imageId and no blob URL, it's already processed
+  if (state.image.imageId && !state.image.src.startsWith('blob:')) {
     return state;
   }
 
-  // If image has a blob URL, convert and store it
+  // If image has a blob URL, it should be handled by immediate save, not autosave
+  // Skip processing blob URLs in autosave to prevent conflicts
   if (state.image.src.startsWith('blob:')) {
-    try {
-      // Check if the blob URL is still valid before trying to fetch it
-      const response = await fetch(state.image.src, { method: 'HEAD' });
-      if (response.ok) {
-        const imageId = await imageStorageService.saveImageFromBlobUrl(state.image.src);
-        if (imageId) {
-          return {
-            ...state,
-            image: {
-              ...state.image,
-              imageId,
-              src: '',
-            },
-          };
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to save blob URL to IndexedDB (blob may be revoked):', error);
-      // If blob URL is invalid, return state without attempting to save
-      return state;
-    }
+    return state;
   }
 
   // If image has base64 data, convert and store it

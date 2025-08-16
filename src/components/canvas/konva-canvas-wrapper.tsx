@@ -191,7 +191,11 @@ export default function KonvaCanvasWrapper({
   // Drag event handlers
   const handleDragStart = (layerId: string, e: any) => {
     setIsDragging(true);
-    setDragStartPos({ x: e.target.x(), y: e.target.y() });
+    const layer = textLayers.find(l => l.id === layerId);
+    if (layer) {
+      // Store the layer's top-left position, not the Group's center position
+      setDragStartPos({ x: layer.x, y: layer.y });
+    }
     setSelectedLayerId(layerId);
   };
 
@@ -204,17 +208,26 @@ export default function KonvaCanvasWrapper({
       const layer = textLayers.find(l => l.id === layerId);
       if (!layer || !setTextLayers) return;
 
-      let newX = e.target.x();
-      let newY = e.target.y();
+      // Get the Group's center position
+      let centerX = e.target.x();
+      let centerY = e.target.y();
+
+      // Convert center position to top-left position for the layer
+      let newX = centerX - layer.width / 2;
+      let newY = centerY - layer.height / 2;
 
       // Apply canvas bounds clamping
       const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
       newX = clamped.x;
       newY = clamped.y;
 
+      // Convert back to center position for the Group
+      centerX = newX + layer.width / 2;
+      centerY = newY + layer.height / 2;
+
       // Update position immediately for smooth feedback
-      e.target.x(newX);
-      e.target.y(newY);
+      e.target.x(centerX);
+      e.target.y(centerY);
     });
   };
 
@@ -230,8 +243,13 @@ export default function KonvaCanvasWrapper({
     const layer = textLayers.find(l => l.id === layerId);
     if (!layer) return;
 
-    let newX = e.target.x();
-    let newY = e.target.y();
+    // Get the Group's center position
+    let centerX = e.target.x();
+    let centerY = e.target.y();
+
+    // Convert center position to top-left position for the layer
+    let newX = centerX - layer.width / 2;
+    let newY = centerY - layer.height / 2;
 
     // Apply final clamping and update state
     const clamped = clampToCanvas(newX, newY, layer.width, layer.height);
@@ -314,12 +332,18 @@ export default function KonvaCanvasWrapper({
   const handleRotationDragStart = () => setIsRotating(true);
 
   const handleRotationDragMove = (layer: TextLayer, e: any) => {
-    const centerX = layer.x + layer.width / 2;
-    const centerY = layer.y + layer.height / 2;
+    // Get the parent Group's position (which is the center of the text)
+    const parentGroup = e.target.getParent();
+    const centerX = parentGroup.x();
+    const centerY = parentGroup.y();
+    
+    // Get the rotation handle's position relative to the stage
+    const stage = e.target.getStage();
+    const pointerPosition = stage.getPointerPosition();
     
     const angle = Math.atan2(
-      e.target.y() - centerY,
-      e.target.x() - centerX
+      pointerPosition.y - centerY,
+      pointerPosition.x - centerX
     ) * 180 / Math.PI;
     
     // Apply angle snapping
@@ -469,6 +493,8 @@ export default function KonvaCanvasWrapper({
           style={{
             left: `${editingLayer.x}px`,
             top: `${editingLayer.y}px`,
+            transform: `rotate(${editingLayer.rotation}deg)`,
+            transformOrigin: `${editingLayer.width / 2}px ${editingLayer.height / 2}px`,
             width: `${Math.max(editingLayer.width, 100)}px`,
             minHeight: `${editingLayer.height}px`,
             fontSize: `${editingLayer.fontSize}px`,

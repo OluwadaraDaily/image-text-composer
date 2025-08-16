@@ -16,7 +16,7 @@ interface EditorHistoryContextType {
   handleUndo: () => void;
   handleRedo: () => void;
   updateCanvas: (canvas: CanvasMeta) => void;
-  updateImage: (image: ImageAsset | null) => void;
+  updateImage: (image: ImageAsset | null) => Promise<void>;
   updateLayers: (layers: TextLayer[]) => void;
   exportCanvas: () => void;
   setStageRef: (stage: Stage | null) => void;
@@ -52,13 +52,25 @@ export function EditorHistoryProvider({ children }: EditorHistoryProviderProps) 
             // Restore image URLs for the present state
             const restoredPresent = await restoreImageUrls(savedHistory.present);
 
-            setHistory({
-              ...savedHistory,
-              present: restoredPresent,
-            });
+            // If image restoration failed, provide a fallback state
+            if (savedHistory.present.image && !restoredPresent.image) {
+              setHistory({
+                ...savedHistory,
+                present: {
+                  ...restoredPresent,
+                  image: null, // Clear invalid image data
+                },
+              });
+            } else {
+              setHistory({
+                ...savedHistory,
+                present: restoredPresent,
+              });
+            }
           }
         } catch (error) {
           console.warn('Failed to load editor history from IndexedDB:', error);
+          // Don't set corrupted state, keep initial state
         } finally {
           setHasPageLoaded(true);
         }
@@ -110,12 +122,33 @@ export function EditorHistoryProvider({ children }: EditorHistoryProviderProps) 
     }));
   }, []);
 
-  const updateImage = useCallback((image: ImageAsset | null) => {
+  const updateImage = useCallback(async (image: ImageAsset | null) => {
+    let processedImage = image;
+    
+    // If image has a blob URL, immediately save it to IndexedDB
+    if (image && image.src.startsWith('blob:')) {
+      try {
+        const { imageStorageService } = await import('@/services/image-storage');
+        const imageId = await imageStorageService.saveImageFromBlobUrl(image.src);
+        if (imageId) {
+          processedImage = {
+            ...image,
+            imageId,
+            src: '', // Clear blob URL since we have it in IndexedDB
+          };
+          console.log('Image saved to IndexedDB with ID:', imageId);
+        }
+      } catch (error) {
+        console.warn('Failed to save image immediately:', error);
+        // Keep the original image even if saving fails
+      }
+    }
+    
     setHistory(prev => ({
       ...prev,
       present: {
         ...prev.present,
-        image,
+        image: processedImage,
       },
     }));
   }, []);

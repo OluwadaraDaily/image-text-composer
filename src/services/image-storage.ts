@@ -77,11 +77,12 @@ export class ImageStorageService {
       if (!response.ok) {
         throw new Error(`Failed to fetch blob: ${response.status} ${response.statusText}`);
       }
+      
       const blob = await response.blob();
       return await this.saveImage(blob, id);
     } catch (error) {
       // Check if this is a blob URL that has been revoked
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      if (error instanceof TypeError && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
         console.warn('Blob URL has been revoked or is no longer accessible:', blobUrl);
       } else {
         console.error('Failed to save image from blob URL:', error);
@@ -102,7 +103,7 @@ export class ImageStorageService {
   }
 
   private generateImageId(): string {
-    return `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `img_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   async clearAllImages(): Promise<boolean> {

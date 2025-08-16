@@ -28,9 +28,41 @@ function AppContent() {
     try {
       const { asset } = await processImageFile(file);
       
+      // First, immediately save the image to IndexedDB if it has a blob URL
+      let processedAsset = asset;
+      
+      if (asset.src.startsWith('blob:')) {
+        try {
+          const { imageStorageService } = await import('@/services/image-storage');
+          
+          // Clone the blob URL to prevent it from being revoked
+          const response = await fetch(asset.src);
+          const blob = await response.blob();
+          const imageId = await imageStorageService.saveImage(blob);
+          
+          if (imageId) {
+            // Create a new blob URL from the same blob for immediate display
+            const newBlobUrl = URL.createObjectURL(blob);
+            
+            processedAsset = {
+              ...asset,
+              imageId,
+              src: newBlobUrl, // Use new blob URL from same blob
+            };
+          } else {
+            // Keep the original asset with blob URL as fallback
+            processedAsset = asset;
+          }
+        } catch (error) {
+          console.warn('Failed to save image immediately during upload:', error);
+          // Keep the original asset with blob URL as fallback
+          processedAsset = asset;
+        }
+      }
+      
       const newState = {
         canvas: { width: 800, height: 600, scale: 1, rotation: 0 },
-        image: asset,
+        image: processedAsset,
         layers: [], // Reset layers when new image is added
       };
       
@@ -41,7 +73,7 @@ function AppContent() {
       };
       
       pushHistoryAction(newState, action);
-      toast.success(`Image processed successfully`);
+      toast.success(`Image processed and saved successfully`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to process image';
       toast.error(`Image processing error: ${message}`);
@@ -54,9 +86,22 @@ function AppContent() {
     setCanvasMeta(meta);
   }, []);
 
-  const handleReset = useCallback(() => {
+  const handleReset = useCallback(async () => {
     if (currentState.image) {
       cleanupImageUrl(currentState.image.src);
+    }
+    
+    // Clear IndexedDB storage to prevent reload issues
+    try {
+      const { imageStorageService } = await import('@/services/image-storage');
+      const { historyStorageService } = await import('@/services/history-storage');
+      
+      await Promise.allSettled([
+        imageStorageService.clearAllImages(),
+        historyStorageService.clearHistory()
+      ]);
+    } catch (error) {
+      console.warn('Failed to clear IndexedDB:', error);
     }
     
     const newState = EMPTY_HISTORY_STATE;
