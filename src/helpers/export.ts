@@ -1,5 +1,5 @@
 import type { EditorHistory, DocumentState } from '@/types/history';
-import { imageStorage } from '@/services/image-storage';
+import { imageStorageService } from '@/services/image-storage';
 
 export interface ExportData {
   version: string;
@@ -53,9 +53,9 @@ export class ExportService {
       }
 
       try {
-        const blob = await imageStorage.getImage(state.image.imageId);
+        const blob = await imageStorageService.getImage(state.image.imageId);
         if (blob) {
-          const base64 = await imageStorage.convertBlobToBase64(blob);
+          const base64 = await imageStorageService.convertBlobToBase64(blob);
           return {
             ...state,
             image: {
