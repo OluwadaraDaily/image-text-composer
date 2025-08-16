@@ -37,7 +37,7 @@ export function useTextLayersWithHistory() {
     );
     
     let actionType: string = HISTORY_ACTION_TYPES.UPDATE_TEXT_CONTENT;
-    let actionDetails = updates;
+    const actionDetails = updates;
     
     if (updates.fontFamily) actionType = HISTORY_ACTION_TYPES.UPDATE_FONT_FAMILY;
     else if (updates.fontSize) actionType = HISTORY_ACTION_TYPES.UPDATE_FONT_SIZE;

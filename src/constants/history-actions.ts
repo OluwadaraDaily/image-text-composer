@@ -27,24 +27,27 @@ export function createHistoryAction(type: string, label: string): HistoryAction 
   };
 }
 
-export function getActionLabel(type: string, details?: any): string {
+export function getActionLabel(type: string, details?: unknown): string {
+  const detailsObj = details as Record<string, unknown>;
+  
   switch (type) {
     case HISTORY_ACTION_TYPES.ADD_TEXT_LAYER:
       return 'Add Text Layer';
     case HISTORY_ACTION_TYPES.UPDATE_TEXT_CONTENT:
-      return `Update Text: "${details?.text?.substring(0, 20) || 'text'}${details?.text?.length > 20 ? '...' : ''}"`;
+      const text = detailsObj?.text as string;
+      return `Update Text: "${text?.substring(0, 20) || 'text'}${text?.length > 20 ? '...' : ''}"`;
     case HISTORY_ACTION_TYPES.UPDATE_FONT_FAMILY:
-      return `Change Font: ${details?.fontFamily || 'font'}`;
+      return `Change Font: ${detailsObj?.fontFamily || 'font'}`;
     case HISTORY_ACTION_TYPES.UPDATE_FONT_SIZE:
-      return `Set Font Size: ${details?.fontSize || 'size'}px`;
+      return `Set Font Size: ${detailsObj?.fontSize || 'size'}px`;
     case HISTORY_ACTION_TYPES.UPDATE_FONT_WEIGHT:
-      return `Set Font Weight: ${details?.fontWeight || 'weight'}`;
+      return `Set Font Weight: ${detailsObj?.fontWeight || 'weight'}`;
     case HISTORY_ACTION_TYPES.UPDATE_TEXT_ALIGNMENT:
-      return `Align Text: ${details?.alignment || 'alignment'}`;
+      return `Align Text: ${detailsObj?.alignment || 'alignment'}`;
     case HISTORY_ACTION_TYPES.UPDATE_TEXT_COLOR:
       return 'Change Text Color';
     case HISTORY_ACTION_TYPES.UPDATE_TEXT_OPACITY:
-      return `Set Opacity: ${details?.opacity || 'opacity'}%`;
+      return `Set Opacity: ${detailsObj?.opacity || 'opacity'}%`;
     case HISTORY_ACTION_TYPES.MOVE_LAYER:
       return 'Move Layer';
     case HISTORY_ACTION_TYPES.RESIZE_LAYER:

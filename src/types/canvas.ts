@@ -6,7 +6,8 @@ type CanvasMeta = {
 };
 
 type ImageAsset = {
-  src: string;         // Object URL or base64 data
+  src: string;         // Object URL or base64 data (legacy)
+  imageId?: string;    // IndexedDB image ID (new)
   width: number;
   height: number;
 };

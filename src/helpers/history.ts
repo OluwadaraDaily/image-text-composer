@@ -56,8 +56,51 @@ export function undoHistory(history: EditorHistory): EditorHistory | null {
   if (past.length === 0) {
     return null;
   }
+
+  // Find the next undo operation that prioritizes text layers over image layer
+  let targetIndex = 0;
+  let foundTextLayerChange = false;
+
+  // Check if there are any text layer changes in the past
+  for (let i = 0; i < past.length; i++) {
+    const pastEntry = past[i];
+    const currentLayers = present.layers;
+    const pastLayers = pastEntry.state.layers;
+    
+    // If text layers are different, prioritize this change
+    if (JSON.stringify(currentLayers) !== JSON.stringify(pastLayers)) {
+      targetIndex = i;
+      foundTextLayerChange = true;
+      break;
+    }
+  }
+
+  // If no text layer changes found but there's an image change, allow image undo
+  if (!foundTextLayerChange) {
+    // Find the most recent change that affects the image
+    for (let i = 0; i < past.length; i++) {
+      const pastEntry = past[i];
+      if (JSON.stringify(present.image) !== JSON.stringify(pastEntry.state.image)) {
+        targetIndex = i;
+        break;
+      }
+    }
+  }
+
+  const targetEntry = past[targetIndex];
   
-  const [previousEntry, ...restPast] = past;
+  // Create the new present state - preserve image if we're only changing text layers
+  let newPresentState: DocumentState;
+  if (foundTextLayerChange) {
+    // Only update text layers, preserve current image and canvas
+    newPresentState = {
+      ...present,
+      layers: targetEntry.state.layers,
+    };
+  } else {
+    // Update the entire state (for image changes when no text changes available)
+    newPresentState = targetEntry.state;
+  }
   
   // Create entry for current state to add to future
   const currentEntry: HistoryEntry = {
@@ -68,11 +111,18 @@ export function undoHistory(history: EditorHistory): EditorHistory | null {
       timestamp: Date.now(),
     },
   };
+
+  // Remove entries up to and including the target
+  const newPast = past.slice(targetIndex + 1);
+  
+  // Add skipped entries to future (in reverse order to maintain chronological order)
+  const skippedEntries = past.slice(0, targetIndex);
+  const newFuture = [currentEntry, ...skippedEntries.reverse(), ...future];
   
   return {
-    past: restPast,
-    present: previousEntry.state,
-    future: [currentEntry, ...future],
+    past: newPast,
+    present: newPresentState,
+    future: newFuture,
     limit: history.limit,
   };
 }
@@ -84,8 +134,51 @@ export function redoHistory(history: EditorHistory): EditorHistory | null {
   if (future.length === 0) {
     return null;
   }
+
+  // Find the next redo operation that prioritizes text layers over image layer
+  let targetIndex = 0;
+  let foundTextLayerChange = false;
+
+  // Check if there are any text layer changes in the future
+  for (let i = 0; i < future.length; i++) {
+    const futureEntry = future[i];
+    const currentLayers = present.layers;
+    const futureLayers = futureEntry.state.layers;
+    
+    // If text layers are different, prioritize this change
+    if (JSON.stringify(currentLayers) !== JSON.stringify(futureLayers)) {
+      targetIndex = i;
+      foundTextLayerChange = true;
+      break;
+    }
+  }
+
+  // If no text layer changes found but there's an image change, allow image redo
+  if (!foundTextLayerChange) {
+    // Find the most recent change that affects the image
+    for (let i = 0; i < future.length; i++) {
+      const futureEntry = future[i];
+      if (JSON.stringify(present.image) !== JSON.stringify(futureEntry.state.image)) {
+        targetIndex = i;
+        break;
+      }
+    }
+  }
+
+  const targetEntry = future[targetIndex];
   
-  const [nextEntry, ...restFuture] = future;
+  // Create the new present state - preserve image if we're only changing text layers
+  let newPresentState: DocumentState;
+  if (foundTextLayerChange) {
+    // Only update text layers, preserve current image and canvas
+    newPresentState = {
+      ...present,
+      layers: targetEntry.state.layers,
+    };
+  } else {
+    // Update the entire state (for image changes when no text changes available)
+    newPresentState = targetEntry.state;
+  }
   
   // Create entry for current state to add to past
   const currentEntry: HistoryEntry = {
@@ -96,11 +189,18 @@ export function redoHistory(history: EditorHistory): EditorHistory | null {
       timestamp: Date.now(),
     },
   };
+
+  // Remove entries up to and including the target
+  const newFuture = future.slice(targetIndex + 1);
+  
+  // Add skipped entries to past (in reverse order to maintain chronological order)
+  const skippedEntries = future.slice(0, targetIndex);
+  const newPast = [currentEntry, ...skippedEntries.reverse(), ...past];
   
   return {
-    past: [currentEntry, ...past],
-    present: nextEntry.state,
-    future: restFuture,
+    past: newPast,
+    present: newPresentState,
+    future: newFuture,
     limit: history.limit,
   };
 }
